@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async'; // Import this package
 import 'home_page.dart';  // 引入 HomePage
 import 'profile_page.dart';  // 引入 ProfilePage
 import 'dashboard.dart'; // 引入 SensorDashboard
@@ -10,23 +13,100 @@ import 'data_6.dart'; // 引入 Data6
 import 'cgatbot.dart'; // 引入 ChatBotPage
 import 'library_page.dart';  // 引入 LibraryPage
 
-class Data3 extends StatelessWidget {
+class Data3 extends StatefulWidget {
   const Data3({Key? key}) : super(key: key);
+
+  @override
+  _Data3State createState() => _Data3State();
+}
+
+class _Data3State extends State<Data3> {
+  List<TableRow> _tableRows = [];
+  Timer? _timer; // Timer object
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+    // Set up the timer to fetch data every 5 seconds
+    _timer = Timer.periodic(Duration(seconds: 5), (Timer timer) {
+      _fetchData();
+    });
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      final response = await http.get(Uri.parse('https://gyyonline.uk/temperature/'));
+
+      if (response.statusCode == 200) {
+        final jsonResult = json.decode(response.body);
+
+        if (jsonResult is Map<String, dynamic> && jsonResult.containsKey('data')) {
+          final data = jsonResult['data'] as List;
+
+          if (data.isEmpty) {
+            print('⚠️ 資料為空');
+          }
+
+          List<TableRow> rows = [];
+          rows.add(_buildTableRow(['感測器', '數據序號', '計數號', '時間戳', '溫度'], isHeader: true));
+
+          for (var item in data) {
+            final sensor = item['sno'] ?? '無資料';
+            final cntNo = item['cnt_no']?.toString() ?? '無資料';
+            final typeId = item['type_id']?.toString() ?? '無資料';
+            final timestamp = item['timestamp'] ?? '無資料';
+            final value = item['value']?.toString() ?? '無資料';
+
+            rows.add(_buildTableRow([sensor, cntNo, typeId, timestamp, value]));
+          }
+
+          setState(() {
+            _tableRows = rows;
+          });
+
+          print('✅ 資料成功更新，共 ${data.length} 筆');
+        } else {
+          print('⚠️ 資料格式錯誤或無 data 欄位');
+          setState(() {
+            _tableRows = [_buildTableRow(['錯誤', '無 data 欄位', '無資料', '無資料', '無資料'])];
+          });
+        }
+      } else {
+        print('❌ API 回傳錯誤，狀態碼: ${response.statusCode}');
+        setState(() {
+          _tableRows = [_buildTableRow(['錯誤', '狀態碼 ${response.statusCode}', '無資料', '無資料', '無資料'])];
+        });
+      }
+    } catch (e) {
+      print('❗ 發生例外錯誤: $e');
+      setState(() {
+        _tableRows = [_buildTableRow(['錯誤', '例外錯誤', '無資料', '無資料', '無資料'])];
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    // Cancel the timer when the widget is disposed
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF262626),
+      backgroundColor: Color(0xFFF1F8E9),  // 背景色設為淺綠色
       // 添加Drawer
       drawer: Drawer(
         child: Container(
-          color: Color(0xFF262626),
+          color: Color(0xFFF1F8E9),  // 側邊欄背景色為淺綠色
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
               DrawerHeader(
                 decoration: BoxDecoration(
-                  color: Color(0xFF555555),
+                  color: Color(0xFFB9F6CA),  // 背景顏色設為淺綠色
                 ),
                 child: Column(
                   children: [
@@ -47,10 +127,10 @@ class Data3 extends StatelessWidget {
                 ),
               ),
               ListTile(
-                leading: Icon(Icons.home, color: Colors.white),
+                leading: Icon(Icons.home, color: Colors.black),
                 title: Text(
                   '首頁',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
                 ),
                 onTap: () {
                   Navigator.pushReplacement(
@@ -60,10 +140,10 @@ class Data3 extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.dashboard, color: Colors.white),
+                leading: Icon(Icons.dashboard, color: Colors.black),
                 title: Text(
                   '儀表板',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
                 ),
                 onTap: () {
                   Navigator.push(
@@ -73,10 +153,10 @@ class Data3 extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.library_books, color: Colors.white),
+                leading: Icon(Icons.library_books, color: Colors.black),
                 title: Text(
                   '圖書館',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
                 ),
                 onTap: () {
                   Navigator.push(
@@ -86,10 +166,10 @@ class Data3 extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.account_circle, color: Colors.white),
+                leading: Icon(Icons.account_circle, color: Colors.black),
                 title: Text(
                   '個人資料',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
                 ),
                 onTap: () {
                   Navigator.push(
@@ -99,10 +179,10 @@ class Data3 extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.wb_sunny, color: Colors.white),
+                leading: Icon(Icons.wb_sunny, color: Colors.black),
                 title: Text(
                   '土壤溫濕度',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
                 ),
                 onTap: () {
                   Navigator.push(
@@ -112,20 +192,23 @@ class Data3 extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.thermostat, color: Colors.white),
+                leading: Icon(Icons.thermostat, color: Colors.black),
                 title: Text(
-                  '葉面溫度',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
+                  '土壤溫度',
+                  style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => Data3()),
+                  );
                 },
               ),
               ListTile(
-                leading: Icon(Icons.eco, color: Colors.white),
+                leading: Icon(Icons.eco, color: Colors.black),
                 title: Text(
                   '碳排放',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
                 ),
                 onTap: () {
                   Navigator.push(
@@ -135,10 +218,10 @@ class Data3 extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.water_drop, color: Colors.white),
+                leading: Icon(Icons.water_drop, color: Colors.black),
                 title: Text(
                   '酸鹼度',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
                 ),
                 onTap: () {
                   Navigator.push(
@@ -148,10 +231,10 @@ class Data3 extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.chat_bubble, color: Colors.white),
+                leading: Icon(Icons.chat_bubble, color: Colors.black),
                 title: Text(
                   '阿吉同學',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
                 ),
                 onTap: () {
                   Navigator.push(
@@ -167,8 +250,8 @@ class Data3 extends StatelessWidget {
         ),
       ),
       appBar: AppBar(
-        backgroundColor: Color(0xFF262626),
-        title: const Text('葉面溫度'),
+        backgroundColor: Color(0xFF81C784),  // 淺綠色的AppBar
+        title: const Text('土壤溫度'),
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
@@ -182,7 +265,7 @@ class Data3 extends StatelessWidget {
       body: SingleChildScrollView(
         child: Container(
           decoration: const BoxDecoration(
-            color: Color(0xFF262626),
+            color: Color(0xFFF1F8E9),  // 背景色為淺綠色
           ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18.5, 80.6, 18.5, 21),
@@ -208,14 +291,14 @@ class Data3 extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Text(
-                      '葉面溫度',
+                      '土壤溫度',
                       style: GoogleFonts.getFont(
                         'ABeeZee',
                         fontStyle: FontStyle.italic,
                         fontWeight: FontWeight.w400,
                         fontSize: 40,
                         height: 1.2,
-                        color: Colors.white,
+                        color: Colors.black,  // 字體顏色為黑色
                       ),
                     ),
                   ),
@@ -228,63 +311,11 @@ class Data3 extends StatelessWidget {
                       0: FlexColumnWidth(2),
                       1: FlexColumnWidth(1.4),
                       2: FlexColumnWidth(1.4),
-                      3: FlexColumnWidth(1.0),
+                      3: FlexColumnWidth(1.4),
+                      4: FlexColumnWidth(1.0),
                     },
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                    children: [
-                      _buildTableRow(
-                        ['時間戳記', '環境溫度（°C）', '葉面溫度（°C）', '蟲害檢測'],
-                        isHeader: true,
-                      ),
-                      _buildTableRow(
-                          ['2024-05-24 00:00', '25.0', '27.49', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 01:00', '26.0', '39.01', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 02:00', '25.5', '34.64', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 03:00', '24.8', '31.97', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 04:00', '24.0', '23.12', '是']),
-                      _buildTableRow(
-                          ['2024-05-24 05:00', '23.5', '23.12', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 06:00', '23.0', '21.16', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 07:00', '24.5', '37.32', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 08:00', '25.5', '32.02', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 09:00', '26.0', '34.16', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 10:00', '27.0', '20.41', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 11:00', '28.0', '39.40', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 12:00', '29.0', '36.65', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 13:00', '29.5', '24.25', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 14:00', '30.0', '23.64', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 15:00', '30.5', '23.67', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 16:00', '31.0', '26.08', '是']),
-                      _buildTableRow(
-                          ['2024-05-24 17:00', '31.5', '30.50', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 18:00', '32.0', '28.64', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 19:00', '31.5', '25.82', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 20:00', '30.0', '32.24', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 21:00', '29.0', '22.79', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 22:00', '28.0', '25.84', '否']),
-                      _buildTableRow(
-                          ['2024-05-24 23:00', '27.0', '27.33', '否']),
-                    ],
+                    children: _tableRows,
                   ),
                 ),
                 // 底部组件（可根据需要添加）
@@ -307,25 +338,29 @@ class Data3 extends StatelessWidget {
   TableRow _buildTableRow(List<String> cells, {bool isHeader = false}) {
     return TableRow(
       decoration: BoxDecoration(
-        color: isHeader ? const Color(0xFF444444) : Colors.transparent,
+        color: isHeader ? Color(0xFF81C784) : Colors.transparent,  // 標題行顏色設定為淺綠色
       ),
       children: cells.map((cell) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            cell,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.getFont(
-              'ABeeZee',
-              fontStyle: FontStyle.italic,
-              fontWeight: isHeader ? FontWeight.bold : FontWeight.w400,
-              fontSize: 12,
-              height: 1.7,
-              color: cell == '是' ? Colors.red : Colors.white,
-            ),
-          ),
-        );
+        return _buildTableCell(cell, isHeader: isHeader);
       }).toList(),
+    );
+  }
+
+  Widget _buildTableCell(String text, {bool isHeader = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.getFont(
+          'ABeeZee',
+          fontStyle: FontStyle.italic,
+          fontWeight: isHeader ? FontWeight.bold : FontWeight.w400,
+          fontSize: 14,
+          height: 1.7,
+          color: Colors.black,  // 設為深黑色
+        ),
+      ),
     );
   }
 }
