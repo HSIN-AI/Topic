@@ -10,13 +10,73 @@ import 'data_3.dart'; // 引入 Data3
 import 'data_5.dart'; // 引入 Data5
 import 'data_6.dart'; // 引入 Data6
 import 'cgatbot.dart'; // 引入 ChatBotPage
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class LibraryPage extends StatelessWidget {
+class LibraryPage extends StatefulWidget {
+  @override
+  _LibraryPageState createState() => _LibraryPageState();
+}
+
+class _LibraryPageState extends State<LibraryPage> {
+  List<Map<String, dynamic>> data = [];
+  bool isLoading = false;
+  DateTime selectedDate = DateTime.now();
+
+  Future<void> fetchData(DateTime date) async {
+    setState(() {
+      isLoading = true;
+    });
+
+    final String dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+    final Uri url = Uri.parse('https://example.com/api/data/$dateString');
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        setState(() {
+          data = responseData['data'] ?? [];
+        });
+      } else {
+        setState(() {
+          data = [];
+        });
+      }
+    } catch (error) {
+      setState(() {
+        data = [];
+      });
+    }
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+    ) ?? selectedDate;
+
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+      });
+
+      // Fetch data based on the selected date
+      fetchData(selectedDate);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFF262626),
-      // 使用 Builder 來提供 Scaffold 上下文
       drawer: Drawer(
         child: Container(
           color: Color(0xFF262626),
@@ -169,7 +229,6 @@ class LibraryPage extends StatelessWidget {
         backgroundColor: Color(0xFF262626),
         title: const Text('圖書館'),
         centerTitle: true,
-        // 使用 Builder 包裝 Scaffold，以便提供開啟側邊攔的上下文
         leading: Builder(
           builder: (context) => IconButton(
             icon: Icon(Icons.menu),
@@ -209,6 +268,39 @@ class LibraryPage extends StatelessWidget {
                     color: Color(0xFFFFFFFF),
                   ),
                 ),
+              ),
+              // 日期選擇器與資料查詢顯示
+              Column(
+                children: [
+                  Text(
+                    "選擇日期: ${selectedDate.toLocal()}".split(' ')[0],
+                    style: TextStyle(fontSize: 20, color: Colors.white),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => _selectDate(context),
+                    child: Text('選擇日期'),
+                  ),
+                  isLoading
+                      ? CircularProgressIndicator()
+                      : DataTable(
+                    columns: [
+                      DataColumn(label: Text('Sensor ID')),
+                      DataColumn(label: Text('Type')),
+                      DataColumn(label: Text('Value')),
+                      DataColumn(label: Text('Timestamp')),
+                      DataColumn(label: Text('Source URL')),
+                    ],
+                    rows: data.map((item) {
+                      return DataRow(cells: [
+                        DataCell(Text(item['sensor_id'].toString())),
+                        DataCell(Text(item['type'])),
+                        DataCell(Text(item['value'].toString())),
+                        DataCell(Text(item['timestamp'])),
+                        DataCell(Text(item['url'])),
+                      ]);
+                    }).toList(),
+                  ),
+                ],
               ),
               SizedBox(
                 width: 269.9,
