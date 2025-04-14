@@ -185,6 +185,78 @@ class _LibraryPageState extends State<LibraryPage> {
                 },
                 isActive: currentPage == '個人資料',
               ),
+              buildListTile(
+                icon: Icons.wb_sunny,
+                title: '土壤溫濕度',
+                onTap: () {
+                  setState(() {
+                    currentPage = '土壤溫濕度';
+                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => Data1()),
+                  );
+                },
+                isActive: currentPage == '土壤溫濕度',
+              ),
+              buildListTile(
+                icon: Icons.thermostat,
+                title: '葉面溫度',
+                onTap: () {
+                  setState(() {
+                    currentPage = '葉面溫度';
+                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => Data3()),
+                  );
+                },
+                isActive: currentPage == '葉面溫度',
+              ),
+              buildListTile(
+                icon: Icons.eco,
+                title: '碳排放',
+                onTap: () {
+                  setState(() {
+                    currentPage = '碳排放';
+                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => Data5()),
+                  );
+                },
+                isActive: currentPage == '碳排放',
+              ),
+              buildListTile(
+                icon: Icons.water_drop,
+                title: '酸鹼度',
+                onTap: () {
+                  setState(() {
+                    currentPage = '酸鹼度';
+                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => Data6()),
+                  );
+                },
+                isActive: currentPage == '酸鹼度',
+              ),
+              buildListTile(
+                icon: Icons.chat_bubble,
+                title: '阿吉同學',
+                onTap: () {
+                  setState(() {
+                    currentPage = '阿吉同學';
+                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatBotPage(userQuery: ''),
+                    ),
+                  );
+                },
+                isActive: currentPage == '阿吉同學',
+              ),
             ],
           ),
         ),
@@ -245,29 +317,21 @@ class _LibraryPageState extends State<LibraryPage> {
                     ),
                   ],
                 ),
-                child: InteractiveViewer(
-                  panEnabled: true, // Allow panning
-                  minScale: 0.5, // Set the minimum scale
-                  maxScale: 2.0, // Set the maximum scale
-                  child: SingleChildScrollView(  // Make the table horizontally scrollable
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: [
-                        DataColumn(label: Text('Timestamp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                        DataColumn(label: Text('Sensor ID', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                        DataColumn(label: Text('Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                        DataColumn(label: Text('Value', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                      ],
-                      rows: data.map((item) {
-                        return DataRow(cells: [
-                          DataCell(Text(item['timestamp'].toString())),  // 將 timestamp 放到最左邊
-                          DataCell(Text(item['sno'].toString())),
-                          DataCell(Text(item['type_id'].toString())),
-                          DataCell(Text(item['value'].toString())),
-                        ]);
-                      }).toList(),
-                    ),
-                  ),
+                child: DataTable(
+                  columns: [
+                    DataColumn(label: Text('Timestamp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                    DataColumn(label: Text('Sensor ID', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                    DataColumn(label: Text('Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                    DataColumn(label: Text('Value', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                  ],
+                  rows: data.map((item) {
+                    return DataRow(cells: [
+                      DataCell(Text(item['timestamp'].toString())),  // 將 timestamp 放到最左邊
+                      DataCell(Text(item['sno'].toString())),
+                      DataCell(Text(item['type_id'].toString())),
+                      DataCell(Text(item['value'].toString())),
+                    ]);
+                  }).toList(),
                 ),
               ),
             ],
