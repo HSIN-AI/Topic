@@ -28,22 +28,50 @@ class _LibraryPageState extends State<LibraryPage> {
     });
 
     final String dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-    final Uri url = Uri.parse('https://example.com/api/data/$dateString');
+    final Uri url = Uri.parse('https://gyyonline.uk/data_by_date/?date=$dateString');  // 使用正確的 API URL
 
     try {
       final response = await http.get(url);
+      print("Request URL: $url");  // 輸出請求的 URL
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        setState(() {
-          data = responseData['data'] ?? [];
-        });
+        print("Response Data: $responseData");  // 輸出 API 回應的資料
+
+        if (responseData.containsKey('data') && responseData['data'] is List) {
+          List dataList = responseData['data'];
+
+          if (dataList.isNotEmpty) {
+            setState(() {
+              data = dataList.map<Map<String, dynamic>>((item) {
+                return {
+                  'sno': item['sno'] ?? 'No Sno',  // 防止 null 值
+                  'type_id': item['type_id'] ?? 0,  // 防止 null 值
+                  'timestamp': item['timestamp'] ?? 'No Timestamp',  // 防止 null 值
+                  'value': item['value'] ?? 0,  // 防止 null 值
+                };
+              }).toList();
+            });
+          } else {
+            print("No data available for the selected date.");
+            setState(() {
+              data = [];
+            });
+          }
+        } else {
+          print("Invalid response format");
+          setState(() {
+            data = [];
+          });
+        }
       } else {
+        print("Failed to load data, status code: ${response.statusCode}");
         setState(() {
           data = [];
         });
       }
     } catch (error) {
+      print("Error fetching data: $error");
       setState(() {
         data = [];
       });
@@ -157,78 +185,6 @@ class _LibraryPageState extends State<LibraryPage> {
                 },
                 isActive: currentPage == '個人資料',
               ),
-              buildListTile(
-                icon: Icons.wb_sunny,
-                title: '土壤溫濕度',
-                onTap: () {
-                  setState(() {
-                    currentPage = '土壤溫濕度';
-                  });
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data1()),
-                  );
-                },
-                isActive: currentPage == '土壤溫濕度',
-              ),
-              buildListTile(
-                icon: Icons.thermostat,
-                title: '葉面溫度',
-                onTap: () {
-                  setState(() {
-                    currentPage = '葉面溫度';
-                  });
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data3()),
-                  );
-                },
-                isActive: currentPage == '葉面溫度',
-              ),
-              buildListTile(
-                icon: Icons.eco,
-                title: '碳排放',
-                onTap: () {
-                  setState(() {
-                    currentPage = '碳排放';
-                  });
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data5()),
-                  );
-                },
-                isActive: currentPage == '碳排放',
-              ),
-              buildListTile(
-                icon: Icons.water_drop,
-                title: '酸鹼度',
-                onTap: () {
-                  setState(() {
-                    currentPage = '酸鹼度';
-                  });
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data6()),
-                  );
-                },
-                isActive: currentPage == '酸鹼度',
-              ),
-              buildListTile(
-                icon: Icons.chat_bubble,
-                title: '阿吉同學',
-                onTap: () {
-                  setState(() {
-                    currentPage = '阿吉同學';
-                  });
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatBotPage(userQuery: ''),
-                    ),
-                  );
-                },
-                isActive: currentPage == '阿吉同學',
-              ),
             ],
           ),
         ),
@@ -274,6 +230,8 @@ class _LibraryPageState extends State<LibraryPage> {
               // 資料表格顯示
               isLoading
                   ? CircularProgressIndicator()  // 加載中顯示圓形進度條
+                  : data.isEmpty
+                  ? Text('沒有資料', style: TextStyle(fontSize: 18, color: Colors.red))
                   : Container(
                 padding: EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -287,23 +245,29 @@ class _LibraryPageState extends State<LibraryPage> {
                     ),
                   ],
                 ),
-                child: DataTable(
-                  columns: [
-                    DataColumn(label: Text('Sensor ID', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                    DataColumn(label: Text('Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                    DataColumn(label: Text('Value', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                    DataColumn(label: Text('Timestamp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                    DataColumn(label: Text('Source URL', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                  ],
-                  rows: data.map((item) {
-                    return DataRow(cells: [
-                      DataCell(Text(item['sensor_id'].toString())),
-                      DataCell(Text(item['type'])),
-                      DataCell(Text(item['value'].toString())),
-                      DataCell(Text(item['timestamp'])),
-                      DataCell(Text(item['url'])),
-                    ]);
-                  }).toList(),
+                child: InteractiveViewer(
+                  panEnabled: true, // Allow panning
+                  minScale: 0.5, // Set the minimum scale
+                  maxScale: 2.0, // Set the maximum scale
+                  child: SingleChildScrollView(  // Make the table horizontally scrollable
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columns: [
+                        DataColumn(label: Text('Timestamp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                        DataColumn(label: Text('Sensor ID', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                        DataColumn(label: Text('Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                        DataColumn(label: Text('Value', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                      ],
+                      rows: data.map((item) {
+                        return DataRow(cells: [
+                          DataCell(Text(item['timestamp'].toString())),  // 將 timestamp 放到最左邊
+                          DataCell(Text(item['sno'].toString())),
+                          DataCell(Text(item['type_id'].toString())),
+                          DataCell(Text(item['value'].toString())),
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
                 ),
               ),
             ],
