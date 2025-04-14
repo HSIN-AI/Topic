@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_app/pages/GuideBar.dart';
 import 'home_page.dart';  // 引入 HomePage
 import 'profile_page.dart';  // 引入 ProfilePage
 import 'dashboard.dart'; // 引入 SensorDashboard
@@ -22,6 +20,7 @@ class _LibraryPageState extends State<LibraryPage> {
   List<Map<String, dynamic>> data = [];
   bool isLoading = false;
   DateTime selectedDate = DateTime.now();
+  String currentPage = '圖書館'; // Track the current page for active highlight
 
   Future<void> fetchData(DateTime date) async {
     setState(() {
@@ -76,16 +75,16 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF262626),
+      backgroundColor: Colors.white,  // Background color changed to white
       drawer: Drawer(
         child: Container(
-          color: Color(0xFF262626),
+          color: Color(0xFFF1F1F1),  // Light gray for the drawer background
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
               DrawerHeader(
                 decoration: BoxDecoration(
-                  color: Color(0xFF555555),
+                  color: Color(0xFFF1F1F1),  // Light gray for the drawer header
                 ),
                 child: Column(
                   children: [
@@ -99,120 +98,128 @@ class _LibraryPageState extends State<LibraryPage> {
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
-                        color: Colors.white,
+                        color: Colors.black,  // Text color changed to black
                       ),
                     ),
                   ],
                 ),
               ),
-              ListTile(
-                leading: Icon(Icons.home, color: Colors.white),
-                title: Text(
-                  '首頁',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
+              buildListTile(
+                icon: Icons.home,
+                title: '首頁',
                 onTap: () {
+                  setState(() {
+                    currentPage = '首頁';
+                  });
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(builder: (context) => HomePage()),
                   );
                 },
+                isActive: currentPage == '首頁',
               ),
-              ListTile(
-                leading: Icon(Icons.dashboard, color: Colors.white),
-                title: Text(
-                  '儀表板',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
+              buildListTile(
+                icon: Icons.dashboard,
+                title: '儀表板',
                 onTap: () {
+                  setState(() {
+                    currentPage = '儀表板';
+                  });
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => SensorDashboard()),
                   );
                 },
+                isActive: currentPage == '儀表板',
               ),
-              ListTile(
-                leading: Icon(Icons.library_books, color: Colors.white),
-                title: Text(
-                  '圖書館',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
+              buildListTile(
+                icon: Icons.library_books,
+                title: '圖書館',
                 onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
+                  setState(() {
+                    currentPage = '圖書館';
+                  });
+                  Navigator.pop(context); // Close the side menu
                 },
+                isActive: currentPage == '圖書館',
               ),
-              ListTile(
-                leading: Icon(Icons.account_circle, color: Colors.white),
-                title: Text(
-                  '個人資料',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
+              buildListTile(
+                icon: Icons.account_circle,
+                title: '個人資料',
                 onTap: () {
+                  setState(() {
+                    currentPage = '個人資料';
+                  });
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => ProfilePage()),
                   );
                 },
+                isActive: currentPage == '個人資料',
               ),
-              ListTile(
-                leading: Icon(Icons.wb_sunny, color: Colors.white),
-                title: Text(
-                  '土壤溫濕度',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
+              buildListTile(
+                icon: Icons.wb_sunny,
+                title: '土壤溫濕度',
                 onTap: () {
+                  setState(() {
+                    currentPage = '土壤溫濕度';
+                  });
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => Data1()),
                   );
                 },
+                isActive: currentPage == '土壤溫濕度',
               ),
-              ListTile(
-                leading: Icon(Icons.thermostat, color: Colors.white),
-                title: Text(
-                  '葉面溫度',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
+              buildListTile(
+                icon: Icons.thermostat,
+                title: '葉面溫度',
                 onTap: () {
+                  setState(() {
+                    currentPage = '葉面溫度';
+                  });
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => Data3()),
                   );
                 },
+                isActive: currentPage == '葉面溫度',
               ),
-              ListTile(
-                leading: Icon(Icons.eco, color: Colors.white),
-                title: Text(
-                  '碳排放',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
+              buildListTile(
+                icon: Icons.eco,
+                title: '碳排放',
                 onTap: () {
+                  setState(() {
+                    currentPage = '碳排放';
+                  });
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => Data5()),
                   );
                 },
+                isActive: currentPage == '碳排放',
               ),
-              ListTile(
-                leading: Icon(Icons.water_drop, color: Colors.white),
-                title: Text(
-                  '酸鹼度',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
+              buildListTile(
+                icon: Icons.water_drop,
+                title: '酸鹼度',
                 onTap: () {
+                  setState(() {
+                    currentPage = '酸鹼度';
+                  });
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => Data6()),
                   );
                 },
+                isActive: currentPage == '酸鹼度',
               ),
-              ListTile(
-                leading: Icon(Icons.chat_bubble, color: Colors.white),
-                title: Text(
-                  '阿吉同學',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
+              buildListTile(
+                icon: Icons.chat_bubble,
+                title: '阿吉同學',
                 onTap: () {
+                  setState(() {
+                    currentPage = '阿吉同學';
+                  });
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -220,13 +227,14 @@ class _LibraryPageState extends State<LibraryPage> {
                     ),
                   );
                 },
+                isActive: currentPage == '阿吉同學',
               ),
             ],
           ),
         ),
       ),
       appBar: AppBar(
-        backgroundColor: Color(0xFF262626),
+        backgroundColor: Color(0xFFB0B0B0),  // Gray color for AppBar
         title: const Text('圖書館'),
         centerTitle: true,
         leading: Builder(
@@ -240,78 +248,88 @@ class _LibraryPageState extends State<LibraryPage> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(18.5, 80.6, 18.5, 21),
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),  // 增加內邊距讓畫面不顯得擁擠
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // 日期選擇器
               Align(
                 alignment: Alignment.topLeft,
-                child: Container(
-                  width: 26,
-                  height: 21,
-                  child: SvgPicture.asset(
-                    'assets/vectors/vector_11_x2.svg',
-                  ),
-                ),
-              ),
-              Container(
-                margin: EdgeInsets.fromLTRB(0, 0, 12, 20),
                 child: Text(
-                  'LibraryPage',
-                  style: GoogleFonts.getFont(
-                    'ABeeZee',
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w400,
-                    fontSize: 40,
-                    height: 0.5,
-                    color: Color(0xFFFFFFFF),
-                  ),
+                  "選擇日期: ${selectedDate.toLocal()}".split(' ')[0],
+                  style: GoogleFonts.inter(fontSize: 18, color: Color(0xFF616161)),  // Dark gray text color
                 ),
               ),
-              // 日期選擇器與資料查詢顯示
-              Column(
-                children: [
-                  Text(
-                    "選擇日期: ${selectedDate.toLocal()}".split(' ')[0],
-                    style: TextStyle(fontSize: 20, color: Colors.white),
+              SizedBox(height: 10),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFB0B0B0), // Gray button background color
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  ElevatedButton(
-                    onPressed: () => _selectDate(context),
-                    child: Text('選擇日期'),
-                  ),
-                  isLoading
-                      ? CircularProgressIndicator()
-                      : DataTable(
-                    columns: [
-                      DataColumn(label: Text('Sensor ID')),
-                      DataColumn(label: Text('Type')),
-                      DataColumn(label: Text('Value')),
-                      DataColumn(label: Text('Timestamp')),
-                      DataColumn(label: Text('Source URL')),
-                    ],
-                    rows: data.map((item) {
-                      return DataRow(cells: [
-                        DataCell(Text(item['sensor_id'].toString())),
-                        DataCell(Text(item['type'])),
-                        DataCell(Text(item['value'].toString())),
-                        DataCell(Text(item['timestamp'])),
-                        DataCell(Text(item['url'])),
-                      ]);
-                    }).toList(),
-                  ),
-                ],
+                ),
+                onPressed: () => _selectDate(context),
+                child: Text('選擇日期', style: GoogleFonts.inter(fontSize: 16)),
               ),
-              SizedBox(
-                width: 269.9,
-                height: 42,
-                child: SvgPicture.asset(
-                  'assets/vectors/component_4_x2.svg',
+              SizedBox(height: 20),
+              // 資料表格顯示
+              isLoading
+                  ? CircularProgressIndicator()  // 加載中顯示圓形進度條
+                  : Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      blurRadius: 5,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: DataTable(
+                  columns: [
+                    DataColumn(label: Text('Sensor ID', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                    DataColumn(label: Text('Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                    DataColumn(label: Text('Value', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                    DataColumn(label: Text('Timestamp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                    DataColumn(label: Text('Source URL', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
+                  ],
+                  rows: data.map((item) {
+                    return DataRow(cells: [
+                      DataCell(Text(item['sensor_id'].toString())),
+                      DataCell(Text(item['type'])),
+                      DataCell(Text(item['value'].toString())),
+                      DataCell(Text(item['timestamp'])),
+                      DataCell(Text(item['url'])),
+                    ]);
+                  }).toList(),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Helper method to build ListTile with hover and click effects
+  Widget buildListTile({required IconData icon, required String title, required Function() onTap, required bool isActive}) {
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() {});
+      },
+      onExit: (_) {
+        setState(() {});
+      },
+      child: ListTile(
+        leading: Icon(icon, color: Colors.black),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(fontSize: 18, color: Colors.black),  // Text color changed to black
+        ),
+        tileColor: isActive ? Color(0xFF9E9E9E) : Colors.white,  // Darker gray when active, white otherwise
+        onTap: onTap,
       ),
     );
   }
