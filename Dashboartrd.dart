@@ -1,11 +1,12 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:image/image.dart' as img; // 用於處理接收到的影像
-import 'home_page.dart';  // 引入 HomePage
-import 'profile_page.dart';  // 引入 ProfilePage
+import 'package:flutter_vlc_player/flutter_vlc_player.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'home_page.dart';
+import 'profile_page.dart';
 import 'data_1.dart';
 import 'data_3.dart';
 import 'data_5.dart';
@@ -21,43 +22,155 @@ class SensorDashboard extends StatefulWidget {
 
 class _SensorDashboardState extends State<SensorDashboard> {
   late WebSocketChannel _channel;
-  img.Image? _image; // 用於顯示接收到的影像
-  String objectCountText = ''; // 用來顯示物件計數
+  VlcPlayerController? _vlcPlayerController;
+  String objectCountText = '等待物件計數...';
+  String _streamUrl = '';
+  bool _isStreamError = false;
+  WebSocketStatus _webSocketStatus = WebSocketStatus.disconnected;
+  int _reconnectAttempts = 0;
+  final int _maxReconnectAttempts = 5;
+  final String _webSocketUrl = 'ws://192.168.31.169:8765';
 
   @override
   void initState() {
     super.initState();
+    _initializeWebSocket();
+    _initializeStream();
+  }
 
-    // 連接 WebSocket 伺服器，請根據你的伺服器地址進行修改
-    _channel = WebSocketChannel.connect(Uri.parse('ws://your-server-ip:8765'));
+  void _initializeWebSocket() {
+    reconnectWebSocket();
+  }
 
-    // 接收 WebSocket 消息
-    _channel.stream.listen((message) {
-      final data = jsonDecode(message);
-      final frameData = data['image']; // 獲取影像數據
-      final counts = data['counts']; // 獲取物件計數
-
+  void reconnectWebSocket() {
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
       setState(() {
-        objectCountText = counts.entries
-            .map((entry) => '${entry.key}: ${entry.value}')
-            .join('\n');
-
-        // 解碼影像
-        final bytes = base64Decode(frameData);
-        _image = img.decodeImage(Uint8List.fromList(bytes)); // 解碼並顯示影像
+        _webSocketStatus = WebSocketStatus.error;
+        objectCountText = '無法連接到 WebSocket 伺服器';
       });
+      print('達到最大重試次數，停止重連');
+      return;
+    }
+
+    print('嘗試連接到 WebSocket: $_webSocketUrl (第 ${_reconnectAttempts + 1} 次)');
+    setState(() {
+      _webSocketStatus = WebSocketStatus.connecting;
+      objectCountText = '正在連線到 WebSocket...';
+    });
+
+    try {
+      _channel = WebSocketChannel.connect(Uri.parse(_webSocketUrl));
+      print('WebSocket 連線初始化成功');
+      _channel.stream.listen(
+            (message) {
+          print('收到 WebSocket 訊息: $message');
+          try {
+            final data = jsonDecode(message);
+            final counts = data['counts'];
+            setState(() {
+              _webSocketStatus = WebSocketStatus.connected;
+              _reconnectAttempts = 0;
+              objectCountText = counts.entries
+                  .map((entry) => '${entry.key}: ${entry.value}')
+                  .join('\n');
+            });
+            print('成功解析並更新物件計數');
+          } catch (e) {
+            print('JSON 解析錯誤: $e');
+            setState(() {
+              objectCountText = '資料格式錯誤';
+              _webSocketStatus = WebSocketStatus.error;
+            });
+          }
+        },
+        onError: (error) {
+          print('WebSocket 錯誤: $error');
+          setState(() {
+            _webSocketStatus = WebSocketStatus.error;
+            objectCountText = '連線錯誤，重試中...';
+          });
+          _reconnectAttempts++;
+          Future.delayed(Duration(seconds: 5), reconnectWebSocket);
+        },
+        onDone: () {
+          print('WebSocket 連線關閉');
+          setState(() {
+            _webSocketStatus = WebSocketStatus.disconnected;
+            objectCountText = '連線斷開，重試中...';
+          });
+          _reconnectAttempts++;
+          Future.delayed(Duration(seconds: 5), reconnectWebSocket);
+        },
+      );
+    } catch (e) {
+      print('WebSocket 初始化錯誤: $e');
+      setState(() {
+        _webSocketStatus = WebSocketStatus.error;
+        objectCountText = '連線初始化失敗';
+      });
+      _reconnectAttempts++;
+      Future.delayed(Duration(seconds: 5), reconnectWebSocket);
+    }
+  }
+
+  Future<void> _initializeStream() async {
+    if (kIsWeb) {
+      setState(() {
+        _isStreamError = true;
+        objectCountText = 'Web 環境不支援 RTSP 串流';
+      });
+      return;
+    }
+
+    final connectivityResult = await Connectivity().checkConnectivity();
+    await _updateStreamUrl(connectivityResult);
+
+    _vlcPlayerController = VlcPlayerController.network(
+      _streamUrl,
+      autoPlay: true,
+      onInit: () {
+        setState(() {});
+      },
+    );
+
+    _vlcPlayerController!.addListener(() {
+      if (_vlcPlayerController!.value.hasError) {
+        setState(() {
+          _isStreamError = true;
+          objectCountText = '無法載入 RTSP 串流';
+        });
+        print('VLC 串流錯誤: ${_vlcPlayerController!.value.errorDescription}');
+      } else if (_vlcPlayerController!.value.isPlaying) {
+        if (_isStreamError) {
+          setState(() {
+            _isStreamError = false;
+          });
+        }
+      }
+    });
+  }
+
+  Future<void> _updateStreamUrl(List<ConnectivityResult> result) async {
+    if (kIsWeb) return;
+
+    setState(() {
+      if (result.contains(ConnectivityResult.wifi)) {
+        _streamUrl = 'rtsp://3B117161:3B117161@192.168.31.50:554/stream1';
+      } else {
+        _streamUrl = 'rtsp://3B117161:3B117161@your_public_ip:554/stream1';
+      }
     });
   }
 
   @override
   void dispose() {
+    if (!kIsWeb) _vlcPlayerController?.dispose();
+    _channel.sink.close();
     super.dispose();
-    _channel.sink.close(); // 關閉 WebSocket 連接
   }
 
   @override
   Widget build(BuildContext context) {
-    // 模擬數據
     final double soilTemp = 26.5;
     final double soilMoisture = 45.0;
     final double leafTemp = 41.2;
@@ -102,7 +215,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
+                  Navigator.pop(context);
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(builder: (context) => HomePage()),
@@ -116,7 +229,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
+                  Navigator.pop(context);
                 },
               ),
               ListTile(
@@ -126,14 +239,13 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => ProfilePage()),
                   );
                 },
               ),
-              // 新增的選項
               ListTile(
                 leading: Icon(Icons.wb_sunny, color: Colors.white),
                 title: Text(
@@ -141,7 +253,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => Data1()),
@@ -155,7 +267,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => Data3()),
@@ -169,7 +281,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => Data5()),
@@ -183,7 +295,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => Data6()),
@@ -197,7 +309,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -212,16 +324,47 @@ class _SensorDashboardState extends State<SensorDashboard> {
       ),
       body: Column(
         children: [
-          // 顯示 WebSocket 傳來的即時監控影像
           Container(
             width: double.infinity,
             height: 250,
             color: Colors.black,
-            child: _image != null
-                ? Image.memory(Uint8List.fromList(img.encodeJpg(_image!))) // 顯示影像
-                : Center(child: CircularProgressIndicator(color: Colors.white)),
+            child: kIsWeb
+                ? Center(
+              child: Text(
+                'Web 環境不支援 RTSP 串流',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            )
+                : (_vlcPlayerController == null || _isStreamError
+                ? Center(child: CircularProgressIndicator(color: Colors.white))
+                : VlcPlayer(
+              controller: _vlcPlayerController!,
+              aspectRatio: 16 / 9,
+              placeholder: Center(
+                  child: CircularProgressIndicator(color: Colors.white)),
+            )),
           ),
-          // 其他儀表板內容
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                Text(
+                  _getWebSocketStatusText(),
+                  style: TextStyle(
+                    color: _webSocketStatus == WebSocketStatus.error
+                        ? Colors.red
+                        : Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  objectCountText,
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: GridView.count(
               crossAxisCount: 2,
@@ -270,6 +413,19 @@ class _SensorDashboardState extends State<SensorDashboard> {
         ],
       ),
     );
+  }
+
+  String _getWebSocketStatusText() {
+    switch (_webSocketStatus) {
+      case WebSocketStatus.connecting:
+        return '正在連線到 WebSocket...';
+      case WebSocketStatus.connected:
+        return 'WebSocket 已連線';
+      case WebSocketStatus.disconnected:
+        return 'WebSocket 已斷線';
+      case WebSocketStatus.error:
+        return 'WebSocket 連線失敗';
+    }
   }
 
   Widget _buildGaugeCard({
@@ -344,4 +500,10 @@ class _SensorDashboardState extends State<SensorDashboard> {
       ),
     );
   }
+}
+
+enum WebSocketStatus { connecting, connected, disconnected, error }
+
+void main() {
+  runApp(MaterialApp(home: SensorDashboard()));
 }
