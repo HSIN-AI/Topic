@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'home_page.dart';  // 引入 HomePage
-import 'profile_page.dart';  // 引入 ProfilePage
+import 'home_page.dart'; // 引入 HomePage
+import 'profile_page.dart'; // 引入 ProfilePage
 import 'dashboard.dart'; // 引入 SensorDashboard
 import 'data_1.dart'; // 引入 Data1
 import 'data_3.dart'; // 引入 Data3
@@ -27,16 +27,17 @@ class _LibraryPageState extends State<LibraryPage> {
       isLoading = true;
     });
 
-    final String dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-    final Uri url = Uri.parse('https://gyyonline.uk/data_by_date/?date=$dateString');  // 使用正確的 API URL
+    final String dateString =
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+    final Uri url = Uri.parse('https://gyyonline.uk/data_by_date/?date=$dateString'); // 使用正確的 API URL
 
     try {
       final response = await http.get(url);
-      print("Request URL: $url");  // 輸出請求的 URL
+      print("Request URL: $url"); // 輸出請求的 URL
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print("Response Data: $responseData");  // 輸出 API 回應的資料
+        print("Response Data: $responseData"); // 輸出 API 回應的資料
 
         if (responseData.containsKey('data') && responseData['data'] is List) {
           List dataList = responseData['data'];
@@ -45,10 +46,10 @@ class _LibraryPageState extends State<LibraryPage> {
             setState(() {
               data = dataList.map<Map<String, dynamic>>((item) {
                 return {
-                  'sno': item['sno'] ?? 'No Sno',  // 防止 null 值
-                  'type_id': item['type_id'] ?? 0,  // 防止 null 值
-                  'timestamp': item['timestamp'] ?? 'No Timestamp',  // 防止 null 值
-                  'value': item['value'] ?? 0,  // 防止 null 值
+                  'sno': item['sno'] ?? 'No Sno', // 防止 null 值
+                  'type_id': item['type_id'] ?? 0, // 防止 null 值
+                  'timestamp': item['timestamp'] ?? 'No Timestamp', // 防止 null 值
+                  'value': item['value'] ?? 0, // 防止 null 值
                 };
               }).toList();
             });
@@ -88,7 +89,8 @@ class _LibraryPageState extends State<LibraryPage> {
       initialDate: selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2101),
-    ) ?? selectedDate;
+    ) ??
+        selectedDate;
 
     if (picked != null && picked != selectedDate) {
       setState(() {
@@ -103,16 +105,16 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,  // Background color changed to white
+      backgroundColor: Colors.white, // Background color changed to white
       drawer: Drawer(
         child: Container(
-          color: Color(0xFFF1F1F1),  // Light gray for the drawer background
+          color: Color(0xFFF1F1F1), // Light gray for the drawer background
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
               DrawerHeader(
                 decoration: BoxDecoration(
-                  color: Color(0xFFF1F1F1),  // Light gray for the drawer header
+                  color: Color(0xFFF1F1F1), // Light gray for the drawer header
                 ),
                 child: Column(
                   children: [
@@ -126,7 +128,7 @@ class _LibraryPageState extends State<LibraryPage> {
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
-                        color: Colors.black,  // Text color changed to black
+                        color: Colors.black, // Text color changed to black
                       ),
                     ),
                   ],
@@ -262,7 +264,7 @@ class _LibraryPageState extends State<LibraryPage> {
         ),
       ),
       appBar: AppBar(
-        backgroundColor: Color(0xFFB0B0B0),  // Gray color for AppBar
+        backgroundColor: Color(0xFFB0B0B0), // Gray color for AppBar
         title: const Text('圖書館'),
         centerTitle: true,
         leading: Builder(
@@ -276,7 +278,7 @@ class _LibraryPageState extends State<LibraryPage> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),  // 增加內邊距讓畫面不顯得擁擠
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30), // 增加內邊距讓畫面不顯得擁擠
           child: Column(
             children: [
               // 日期選擇器
@@ -284,7 +286,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 alignment: Alignment.topLeft,
                 child: Text(
                   "選擇日期: ${selectedDate.toLocal()}".split(' ')[0],
-                  style: GoogleFonts.inter(fontSize: 18, color: Color(0xFF616161)),  // Dark gray text color
+                  style: GoogleFonts.inter(fontSize: 18, color: Color(0xFF616161)), // Dark gray text color
                 ),
               ),
               SizedBox(height: 10),
@@ -301,7 +303,7 @@ class _LibraryPageState extends State<LibraryPage> {
               SizedBox(height: 20),
               // 資料表格顯示
               isLoading
-                  ? CircularProgressIndicator()  // 加載中顯示圓形進度條
+                  ? CircularProgressIndicator() // 加載中顯示圓形進度條
                   : data.isEmpty
                   ? Text('沒有資料', style: TextStyle(fontSize: 18, color: Colors.red))
                   : Container(
@@ -317,21 +319,81 @@ class _LibraryPageState extends State<LibraryPage> {
                     ),
                   ],
                 ),
-                child: DataTable(
-                  columns: [
-                    DataColumn(label: Text('Timestamp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                    DataColumn(label: Text('Sensor ID', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                    DataColumn(label: Text('Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                    DataColumn(label: Text('Value', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500))),
-                  ],
-                  rows: data.map((item) {
-                    return DataRow(cells: [
-                      DataCell(Text(item['timestamp'].toString())),  // 將 timestamp 放到最左邊
-                      DataCell(Text(item['sno'].toString())),
-                      DataCell(Text(item['type_id'].toString())),
-                      DataCell(Text(item['value'].toString())),
-                    ]);
-                  }).toList(),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columnSpacing: 10, // Reduce spacing between columns
+                    columns: [
+                      DataColumn(
+                        label: Text(
+                          'Timestamp',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Sensor ID',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Type',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Value',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                    rows: data.map((item) {
+                      return DataRow(cells: [
+                        DataCell(
+                          Container(
+                            constraints: BoxConstraints(maxWidth: 120), // Limit timestamp width
+                            child: Text(
+                              item['timestamp'].toString(),
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Container(
+                            constraints: BoxConstraints(maxWidth: 80),
+                            child: Text(
+                              item['sno'].toString(),
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Container(
+                            constraints: BoxConstraints(maxWidth: 60),
+                            child: Text(
+                              item['type_id'].toString(),
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Container(
+                            constraints: BoxConstraints(maxWidth: 60),
+                            child: Text(
+                              item['value'].toString(),
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      ]);
+                    }).toList(),
+                  ),
                 ),
               ),
             ],
@@ -342,7 +404,8 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 
   // Helper method to build ListTile with hover and click effects
-  Widget buildListTile({required IconData icon, required String title, required Function() onTap, required bool isActive}) {
+  Widget buildListTile(
+      {required IconData icon, required String title, required Function() onTap, required bool isActive}) {
     return MouseRegion(
       onEnter: (_) {
         setState(() {});
@@ -354,9 +417,9 @@ class _LibraryPageState extends State<LibraryPage> {
         leading: Icon(icon, color: Colors.black),
         title: Text(
           title,
-          style: GoogleFonts.inter(fontSize: 18, color: Colors.black),  // Text color changed to black
+          style: GoogleFonts.inter(fontSize: 18, color: Colors.black), // Text color changed to black
         ),
-        tileColor: isActive ? Color(0xFF9E9E9E) : Colors.white,  // Darker gray when active, white otherwise
+        tileColor: isActive ? Color(0xFF9E9E9E) : Colors.white, // Darker gray when active, white otherwise
         onTap: onTap,
       ),
     );
