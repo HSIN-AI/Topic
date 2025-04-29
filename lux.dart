@@ -24,6 +24,7 @@ class Lux extends StatefulWidget {
 class _LuxState extends State<Lux> {
   List<TableRow> _tableRows = [];
   Timer? _timer;
+  String currentPage = '光照資料'; // Track the current page for active highlight
 
   @override
   void initState() {
@@ -44,24 +45,46 @@ class _LuxState extends State<Lux> {
         if (jsonResult is Map<String, dynamic> && jsonResult.containsKey('data')) {
           final data = jsonResult['data'] as List;
 
+          // 獲取當日日期（忽略時間）
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+
           List<TableRow> rows = [];
           rows.add(_buildTableRow(
-            ['感測器', '數據序號', '類型', '時間戳', '光照强度 (lux)'],
+            ['時間戳', '感測器', '類型', '光照資料 (lux)'],
             isHeader: true,
           ));
 
-          for (var item in data) {
-            final sensor = item['sno']?.toString() ?? '無資料';
-            final cntNo = item['cnt_no']?.toString() ?? '無資料';
-            final typeId = item['type_id']?.toString() ?? '無資料';
-            final timestamp = item['timestamp']?.toString() ?? '無資料';
-            final value = item['value'] != null
-                ? (item['value'] is num
-                ? item['value'].toStringAsFixed(2)
-                : item['value'].toString())
-                : '無資料';
+          // 過濾當日數據
+          final todayData = data.where((item) {
+            final timestampStr = item['timestamp']?.toString();
+            if (timestampStr == null) return false;
+            try {
+              final timestamp = DateTime.parse(timestampStr);
+              final timestampDate =
+              DateTime(timestamp.year, timestamp.month, timestamp.day);
+              return timestampDate == today;
+            } catch (e) {
+              return false; // 無效 timestamp 則跳過
+            }
+          }).toList();
 
-            rows.add(_buildTableRow([sensor, cntNo, typeId, timestamp, value]));
+          // 檢查是否有當日數據
+          if (todayData.isEmpty) {
+            rows.add(_buildTableRow(['今日無數據', '提示', '無資料', '無資料']));
+          } else {
+            for (var item in todayData) {
+              final sensor = item['sno']?.toString() ?? '無資料';
+              final typeId = item['type_id']?.toString() ?? '無資料';
+              final timestamp = item['timestamp']?.toString() ?? '無資料';
+              final value = item['value'] != null
+                  ? (item['value'] is num
+                  ? item['value'].toStringAsFixed(2)
+                  : item['value'].toString())
+                  : '無資料';
+
+              rows.add(_buildTableRow([timestamp, sensor, typeId, value]));
+            }
           }
 
           setState(() {
@@ -70,21 +93,21 @@ class _LuxState extends State<Lux> {
         } else {
           setState(() {
             _tableRows = [
-              _buildTableRow(['錯誤', '無 data 欄位', '無資料', '無資料', '無資料'])
+              _buildTableRow(['無資料', '錯誤', '無 data 欄位', '無資料'])
             ];
           });
         }
       } else {
         setState(() {
           _tableRows = [
-            _buildTableRow(['錯誤', '狀態碼 ${response.statusCode}', '無資料', '無資料', '無資料'])
+            _buildTableRow(['無資料', '錯誤', '狀態碼 ${response.statusCode}', '無資料'])
           ];
         });
       }
     } catch (e) {
       setState(() {
         _tableRows = [
-          _buildTableRow(['錯誤', '例外錯誤: $e', '無資料', '無資料', '無資料'])
+          _buildTableRow(['無資料', '錯誤', '例外錯誤: $e', '無資料'])
         ];
       });
     }
@@ -99,16 +122,16 @@ class _LuxState extends State<Lux> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF1F8E9),
+      backgroundColor: Colors.white,
       drawer: Drawer(
         child: Container(
-          color: Color(0xFF262626), // 深色主題，與 HomePage 一致
+          color: Color(0xFFF1F1F1),
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
               DrawerHeader(
                 decoration: BoxDecoration(
-                  color: Color(0xFF555555),
+                  color: Color(0xFFF1F1F1),
                 ),
                 child: Column(
                   children: [
@@ -122,59 +145,90 @@ class _LuxState extends State<Lux> {
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
-                        color: Colors.white,
+                        color: Colors.black,
                       ),
                     ),
                   ],
                 ),
               ),
               _buildDrawerItem(Icons.home, '首頁', () {
+                setState(() {
+                  currentPage = '首頁';
+                });
                 Navigator.pushReplacement(
                     context, MaterialPageRoute(builder: (context) => HomePage()));
-              }),
+              }, currentPage == '首頁'),
               _buildDrawerItem(Icons.dashboard, '儀表板', () {
+                setState(() {
+                  currentPage = '儀表板';
+                });
                 Navigator.push(context,
                     MaterialPageRoute(builder: (context) => SensorDashboard()));
-              }),
+              }, currentPage == '儀表板'),
               _buildDrawerItem(Icons.library_books, '圖書館', () {
+                setState(() {
+                  currentPage = '圖書館';
+                });
                 Navigator.push(context,
                     MaterialPageRoute(builder: (context) => LibraryPage()));
-              }),
+              }, currentPage == '圖書館'),
               _buildDrawerItem(Icons.account_circle, '個人資料', () {
+                setState(() {
+                  currentPage = '個人資料';
+                });
                 Navigator.push(context,
                     MaterialPageRoute(builder: (context) => ProfilePage()));
-              }),
+              }, currentPage == '個人資料'),
               _buildDrawerItem(Icons.wb_sunny, '土壤濕度', () {
+                setState(() {
+                  currentPage = '土壤濕度';
+                });
                 Navigator.push(
                     context, MaterialPageRoute(builder: (context) => Data1()));
-              }),
+              }, currentPage == '土壤濕度'),
               _buildDrawerItem(Icons.thermostat, '葉面溫度', () {
+                setState(() {
+                  currentPage = '葉面溫度';
+                });
                 Navigator.push(
                     context, MaterialPageRoute(builder: (context) => Data3()));
-              }),
+              }, currentPage == '葉面溫度'),
               _buildDrawerItem(Icons.eco, '碳排放', () {
+                setState(() {
+                  currentPage = '碳排放';
+                });
                 Navigator.push(
                     context, MaterialPageRoute(builder: (context) => Data5()));
-              }),
+              }, currentPage == '碳排放'),
               _buildDrawerItem(Icons.water_drop, '酸鹼度', () {
+                setState(() {
+                  currentPage = '酸鹼度';
+                });
                 Navigator.push(
                     context, MaterialPageRoute(builder: (context) => Data6()));
-              }),
-              _buildDrawerItem(Icons.lightbulb, '光照强度', () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => Lux()));
-              }),
+              }, currentPage == '酸鹼度'),
+              _buildDrawerItem(Icons.lightbulb, '光照資料', () {
+                setState(() {
+                  currentPage = '光照强度';
+                });
+                Navigator.pop(context);
+              }, currentPage == '光照强度'),
               _buildDrawerItem(Icons.chat_bubble, '阿吉同學', () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => ChatBotPage(userQuery: '')));
-              }),
+                setState(() {
+                  currentPage = '阿吉同學';
+                });
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => ChatBotPage(userQuery: '')));
+              }, currentPage == '阿吉同學'),
             ],
           ),
         ),
       ),
       appBar: AppBar(
-        backgroundColor: Color(0xFF81C784),
-        title: const Text('光照强度'),
+        backgroundColor: Color(0xFFB0B0B0),
+        title: const Text('光照資料'),
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
@@ -186,10 +240,10 @@ class _LuxState extends State<Lux> {
       body: SingleChildScrollView(
         child: Container(
           decoration: const BoxDecoration(
-            color: Color(0xFFF1F8E9),
+            color: Colors.white,
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(18.5, 80.6, 18.5, 21),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -210,27 +264,34 @@ class _LuxState extends State<Lux> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Text(
-                      '光照强度',
-                      style: GoogleFonts.getFont(
-                        'ABeeZee',
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w400,
-                        fontSize: 40,
-                        height: 1.2,
-                        color: Colors.black,
+                      '光照資料',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 24,
+                        color: Color(0xFF616161),
                       ),
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 15.3),
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.2),
+                        blurRadius: 5,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
                   child: Table(
                     columnWidths: const {
-                      0: FlexColumnWidth(2), // 感測器
-                      1: FlexColumnWidth(1.4), // 數據序號
-                      2: FlexColumnWidth(1.4), // 類型
-                      3: FlexColumnWidth(1.4), // 時間戳
-                      4: FlexColumnWidth(1.0), // 光照强度
+                      0: FlexColumnWidth(2),
+                      1: FlexColumnWidth(1.4),
+                      2: FlexColumnWidth(1.4),
+                      3: FlexColumnWidth(1.0),
                     },
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                     children: _tableRows,
@@ -252,21 +313,30 @@ class _LuxState extends State<Lux> {
     );
   }
 
-  ListTile _buildDrawerItem(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white), // 深色主題使用白色
-      title: Text(
-        title,
-        style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
+  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap, bool isActive) {
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() {});
+      },
+      onExit: (_) {
+        setState(() {});
+      },
+      child: ListTile(
+        leading: Icon(icon, color: Colors.black),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
+        ),
+        tileColor: isActive ? Color(0xFF9E9E9E) : Colors.white,
+        onTap: onTap,
       ),
-      onTap: onTap,
     );
   }
 
   TableRow _buildTableRow(List<String> cells, {bool isHeader = false}) {
     return TableRow(
       decoration: BoxDecoration(
-        color: isHeader ? Color(0xFF81C784) : Colors.transparent,
+        color: isHeader ? Color(0xFFB0B0B0) : Colors.transparent,
       ),
       children: cells.map((cell) {
         return _buildTableCell(cell, isHeader: isHeader);
@@ -280,12 +350,9 @@ class _LuxState extends State<Lux> {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: GoogleFonts.getFont(
-          'ABeeZee',
-          fontStyle: FontStyle.italic,
-          fontWeight: isHeader ? FontWeight.bold : FontWeight.w400,
+        style: GoogleFonts.inter(
+          fontWeight: isHeader ? FontWeight.w500 : FontWeight.w400,
           fontSize: 14,
-          height: 1.7,
           color: Colors.black,
         ),
       ),
