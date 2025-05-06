@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
-import 'home_page.dart';
 import 'profile_page.dart';
 import 'dashboard.dart';
 import 'data_1.dart';
@@ -24,7 +23,7 @@ class Lux extends StatefulWidget {
 class _LuxState extends State<Lux> {
   List<TableRow> _tableRows = [];
   Timer? _timer;
-  String currentPage = '光照資料'; // Track the current page for active highlight
+  String currentPage = '光照資料';
 
   @override
   void initState() {
@@ -45,7 +44,6 @@ class _LuxState extends State<Lux> {
         if (jsonResult is Map<String, dynamic> && jsonResult.containsKey('data')) {
           final data = jsonResult['data'] as List;
 
-          // 獲取當日日期（忽略時間）
           final now = DateTime.now();
           final today = DateTime(now.year, now.month, now.day);
 
@@ -55,7 +53,6 @@ class _LuxState extends State<Lux> {
             isHeader: true,
           ));
 
-          // 過濾當日數據
           final todayData = data.where((item) {
             final timestampStr = item['timestamp']?.toString();
             if (timestampStr == null) return false;
@@ -65,11 +62,10 @@ class _LuxState extends State<Lux> {
               DateTime(timestamp.year, timestamp.month, timestamp.day);
               return timestampDate == today;
             } catch (e) {
-              return false; // 無效 timestamp 則跳過
+              return false;
             }
           }).toList();
 
-          // 檢查是否有當日數據
           if (todayData.isEmpty) {
             rows.add(_buildTableRow(['今日無數據', '提示', '無資料', '無資料']));
           } else {
@@ -134,14 +130,15 @@ class _LuxState extends State<Lux> {
                   color: Color(0xFFF1F1F1),
                 ),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircleAvatar(
                       radius: 40,
-                      backgroundImage: AssetImage('assets/images/profile.jpg'),
+                      backgroundImage: AssetImage('assets/images/gkhlogo.png'),
                     ),
                     SizedBox(height: 10),
                     Text(
-                      '阿吉同學',
+                      'GKH監測小站',
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
@@ -151,13 +148,7 @@ class _LuxState extends State<Lux> {
                   ],
                 ),
               ),
-              _buildDrawerItem(Icons.home, '首頁', () {
-                setState(() {
-                  currentPage = '首頁';
-                });
-                Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (context) => HomePage()));
-              }, currentPage == '首頁'),
+
               _buildDrawerItem(Icons.dashboard, '儀表板', () {
                 setState(() {
                   currentPage = '儀表板';
@@ -359,3 +350,6 @@ class _LuxState extends State<Lux> {
     );
   }
 }
+
+
+
