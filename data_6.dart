@@ -1,222 +1,370 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'home_page.dart';  // 引入 HomePage
-import 'profile_page.dart';  // 引入 ProfilePage
-import 'dashboard.dart'; // 引入 SensorDashboard
-import 'data_1.dart'; // 引入 Data1
-import 'data_3.dart'; // 引入 Data3
-import 'data_5.dart'; // 引入 Data5
-import 'cgatbot.dart'; // 引入 ChatBotPage
-import 'library_page.dart';  // 確保正確導入 LibraryPage
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async';
+import 'home_page.dart';
+import 'profile_page.dart';
+import 'dashboard.dart';
+import 'data_1.dart';
+import 'data_3.dart';
+import 'data_5.dart';
+import 'data_6.dart';
+import 'cgatbot.dart';
+import 'library_page.dart';
+import 'lux.dart'; // Ensure Lux is correctly imported
 
-class Data6 extends StatelessWidget {
+class Data6 extends StatefulWidget {
+  const Data6({Key? key}) : super(key: key);
+
+  @override
+  _Data6State createState() => _Data6State();
+}
+
+class _Data6State extends State<Data6> {
+  List<TableRow> _tableRows = [];
+  Timer? _timer;
+  String currentPage = '酸鹼度'; // Track the current page for active highlight
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+    _timer = Timer.periodic(Duration(seconds: 5), (Timer timer) {
+      _fetchData();
+    });
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      print('Fetching data from https://gyyonline.uk/ph_data/');
+      final response = await http.get(Uri.parse('https://gyyonline.uk/ph_data/'));
+
+      print('HTTP Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResult = json.decode(response.body);
+
+        // Handle possible data formats (list or {"data": [...]})
+        final data = jsonResult is List
+            ? jsonResult
+            : (jsonResult['data'] as List?) ?? [];
+
+        print('Parsed Data: $data');
+
+        // Get current date (ignore time)
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        print('Filtering data for today: $today');
+
+        List<TableRow> rows = [];
+        rows.add(_buildTableRow(
+          ['時間戳','感測器', '數據序號', '類型',  '酸鹼值 (pH)'],
+          isHeader: true,
+        ));
+
+        // Filter data for today
+        final todayData = data.where((item) {
+          final timestampStr = item['timestamp']?.toString();
+          if (timestampStr == null) {
+            print('Skipping item with null timestamp: $item');
+            return false;
+          }
+          try {
+            final timestamp = DateTime.parse(timestampStr);
+            final timestampDate =
+            DateTime(timestamp.year, timestamp.month, timestamp.day);
+            final isToday = timestampDate == today;
+            print('Item timestamp: $timestampStr, isToday: $isToday');
+            return isToday;
+          } catch (e) {
+            print('Invalid timestamp in item: $item, error: $e');
+            return false; // Skip invalid timestamps
+          }
+        }).toList();
+
+        print('Filtered todayData: $todayData');
+
+        // Check if there is data for today
+        if (todayData.isEmpty) {
+          print('No data for today, showing no-data message');
+          rows.add(_buildTableRow(['提示', '無資料', '無資料', '今日無數據', '無資料']));
+        } else {
+          for (var item in todayData) {
+            final timestamp = item['timestamp']?.toString() ?? '無資料';
+            final sensor = item['sno']?.toString() ?? '無資料';
+            final cntNo = item['cnt_no']?.toString() ?? '無資料';
+            final typeId = item['type_id']?.toString() ?? '無資料';
+            final value = item['value'] != null
+                ? (item['value'] is num
+                ? item['value'].toStringAsFixed(1)
+                : item['value'].toString())
+                : '無資料';
+
+            print('Adding row: [$timestamp,$sensor, $cntNo, $typeId,  $value]');
+            rows.add(_buildTableRow([timestamp,sensor, cntNo, typeId, value]));
+          }
+        }
+
+        setState(() {
+          _tableRows = rows;
+        });
+      } else {
+        print('HTTP Error: Status code ${response.statusCode}');
+        setState(() {
+          _tableRows = [
+            _buildTableRow(['錯誤', '狀態碼 ${response.statusCode}', '無資料 Capitale', '無資料', '無資料'])
+          ];
+        });
+      }
+    } catch (e) {
+      print('Exception caught: $e');
+      setState(() {
+        _tableRows = [
+          _buildTableRow(['錯誤', '例外錯誤: $e', '無資料', '無資料', '無資料'])
+        ];
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF262626),
-      // 添加Drawer
+      backgroundColor: Colors.white, // Match Lux: white background
       drawer: Drawer(
         child: Container(
-          color: Color(0xFF262626),
+          color: Color(0xFFF1F1F1), // Match Lux: light gray drawer background
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
               DrawerHeader(
                 decoration: BoxDecoration(
-                  color: Color(0xFF555555),
+                  color: Color(0xFFF1F1F1),
                 ),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircleAvatar(
                       radius: 40,
-                      backgroundImage: AssetImage('assets/images/profile.jpg'),
+                      backgroundImage: AssetImage('assets/images/gkhlogo.png'),
                     ),
                     SizedBox(height: 10),
                     Text(
-                      '阿吉同學',
+                      'GKH監測小站',
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
-                        color: Colors.white,
+                        color: Colors.black,
                       ),
                     ),
                   ],
                 ),
               ),
-              ListTile(
-                leading: Icon(Icons.home, color: Colors.white),
-                title: Text(
-                  '首頁',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => HomePage()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.dashboard, color: Colors.white),
-                title: Text(
-                  '儀表板',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SensorDashboard()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.library_books, color: Colors.white),
-                title: Text(
-                  '圖書館',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => LibraryPage()),  // 確保 LibraryPage 正確引用
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.account_circle, color: Colors.white),
-                title: Text(
-                  '個人資料',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ProfilePage()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.wb_sunny, color: Colors.white),
-                title: Text(
-                  '土壤溫濕度',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data1()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.thermostat, color: Colors.white),
-                title: Text(
-                  '葉面溫度',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data3()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.eco, color: Colors.white),
-                title: Text(
-                  '碳排放',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data5()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.water_drop, color: Colors.white),
-                title: Text(
-                  '酸鹼度',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context); // 關閉側邊攔
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.chat_bubble, color: Colors.white),
-                title: Text(
-                  '阿吉同學',
-                  style: GoogleFonts.inter(fontSize: 18, color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.push(
+              _buildDrawerItem(Icons.dashboard, '儀表板', () {
+                setState(() {
+                  currentPage = '儀表板';
+                });
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => SensorDashboard()));
+              }, currentPage == '儀表板'),
+              _buildDrawerItem(Icons.library_books, '圖書館', () {
+                setState(() {
+                  currentPage = '圖書館';
+                });
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => LibraryPage()));
+              }, currentPage == '圖書館'),
+              _buildDrawerItem(Icons.account_circle, '個人資料', () {
+                setState(() {
+                  currentPage = '個人資料';
+                });
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => ProfilePage()));
+              }, currentPage == '個人資料'),
+              _buildDrawerItem(Icons.wb_sunny, '土壤濕度', () {
+                setState(() {
+                  currentPage = '土壤濕度';
+                });
+                Navigator.push(
+                    context, MaterialPageRoute(builder: (context) => Data1()));
+              }, currentPage == '土壤濕度'),
+              _buildDrawerItem(Icons.thermostat, '現在溫度', () {
+                setState(() {
+                  currentPage = '現在溫度';
+                });
+                Navigator.push(
+                    context, MaterialPageRoute(builder: (context) => Data3()));
+              }, currentPage == '現在溫度'),
+              _buildDrawerItem(Icons.eco, '碳排放', () {
+                setState(() {
+                  currentPage = '碳排放';
+                });
+                Navigator.push(
+                    context, MaterialPageRoute(builder: (context) => Data5()));
+              }, currentPage == '碳排放'),
+              _buildDrawerItem(Icons.water_drop, '酸鹼度', () {
+                setState(() {
+                  currentPage = '酸鹼度';
+                });
+                Navigator.push(
+                    context, MaterialPageRoute(builder: (context) => Data6()));
+              }, currentPage == '酸鹼度'),
+              _buildDrawerItem(Icons.lightbulb, '光照資料', () {
+                setState(() {
+                  currentPage = '光照資料';
+                });
+                Navigator.pop(context);
+              }, currentPage == '光照資料'),
+              _buildDrawerItem(Icons.chat_bubble, '阿吉同學', () {
+                setState(() {
+                  currentPage = '阿吉同學';
+                });
+                Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ChatBotPage(userQuery: ''),
-                    ),
-                  );
-                },
-              ),
+                        builder: (context) => ChatBotPage(userQuery: '')));
+              }, currentPage == '阿吉同學'),
             ],
           ),
         ),
       ),
       appBar: AppBar(
-        backgroundColor: Color(0xFF262626),
+        backgroundColor: Color(0xFFB0B0B0), // Match Lux: mid-gray AppBar
         title: const Text('酸鹼度'),
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
             icon: Icon(Icons.menu),
-            onPressed: () {
-              Scaffold.of(context).openDrawer(); // 打開側邊攔
-            },
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
       ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(18.5, 80.6, 18.5, 21),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Align(
-                alignment: Alignment.topLeft,
-                child: Container(
-                  width: 26,
-                  height: 21,
-                  child: SvgPicture.asset(
-                    'assets/vectors/vector_11_x2.svg',
-                  ),
-                ),
-              ),
-              Container(
-                margin: EdgeInsets.fromLTRB(0, 0, 12, 20), // 调整后的 margin
-                child: Text(
-                  '酸鹼值',
-                  style: GoogleFonts.getFont(
-                    'ABeeZee',
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w400,
-                    fontSize: 40,
-                    height: 0.5,
-                    color: Color(0xFFFFFFFF),
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 269.9,
-                height: 42,
-                child: SvgPicture.asset(
-                  'assets/vectors/component_4_x2.svg',
-                ),
-              ),
-            ],
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white, // Match Lux: white background
           ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30), // Match Lux padding
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: IconButton(
+                    icon: SvgPicture.asset(
+                      'assets/vectors/vector_12_x2.svg',
+                      width: 26,
+                      height: 21,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Text(
+                      '酸鹼度',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 24, // Match Lux: smaller, bold title
+                        color: Color(0xFF616161), // Match Lux: dark gray
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white, // Match Lux: white table background
+                    borderRadius: BorderRadius.circular(10), // Match Lux: rounded corners
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.2), // Match Lux: subtle shadow
+                        blurRadius: 5,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Table(
+                    columnWidths: const {
+                      0: FlexColumnWidth(2),
+                      1: FlexColumnWidth(1.4),
+                      2: FlexColumnWidth(1.4),
+                      3: FlexColumnWidth(1.4),
+                      4: FlexColumnWidth(1.0),
+                    },
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: _tableRows,
+                  ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 42,
+                  child: SvgPicture.asset(
+                    'assets/vectors/component_41_x2.svg',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap, bool isActive) {
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() {});
+      },
+      onExit: (_) {
+        setState(() {});
+      },
+      child: ListTile(
+        leading: Icon(icon, color: Colors.black), // Match Lux: black icons
+        title: Text(
+          title,
+          style: GoogleFonts.inter(fontSize: 18, color: Colors.black), // Match Lux: black text
+        ),
+        tileColor: isActive ? Color(0xFF9E9E9E) : Colors.white, // Match Lux: active/inactive colors
+        onTap: onTap,
+      ),
+    );
+  }
+
+  TableRow _buildTableRow(List<String> cells, {bool isHeader = false}) {
+    return TableRow(
+      decoration: BoxDecoration(
+        color: isHeader ? Color(0xFFB0B0B0) : Colors.transparent, // Match Lux: mid-gray header
+      ),
+      children: cells.map((cell) {
+        return _buildTableCell(cell, isHeader: isHeader);
+      }).toList(),
+    );
+  }
+
+  Widget _buildTableCell(String text, {bool isHeader = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.inter(
+          fontWeight: isHeader ? FontWeight.w500 : FontWeight.w400, // Match Lux: header/content weights
+          fontSize: 14,
+          color: Colors.black, // Match Lux: black text
         ),
       ),
     );
