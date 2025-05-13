@@ -6,7 +6,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
-import 'home_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'profile_page.dart';
 import 'data_1.dart';
 import 'data_3.dart';
@@ -364,22 +364,28 @@ class _SensorDashboardState extends State<SensorDashboard> {
             children: [
               DrawerHeader(
                 decoration: BoxDecoration(
-                  color: Colors.black,
+                  color: Color(0xFFF1F1F1),
                 ),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircleAvatar(
                       radius: 40,
-                      backgroundImage: AssetImage('assets/images/profile.jpg'),
+                      backgroundImage: AssetImage('assets/images/gkhlogo.png'), // 這裡是新的 logo 圖片
                     ),
                     SizedBox(height: 10),
                     Text(
-                      '阿吉同學',
-                      style: TextStyle(color: Colors.white, fontSize: 20),
+                      'GJH監測小站', // 顯示新的標題
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        color: Colors.black,
+                      ),
                     ),
                   ],
                 ),
               ),
+
               _buildDrawerItem(Icons.account_circle, '個人資料', () {
                 Navigator.pop(context);
                 Navigator.pushReplacement(
