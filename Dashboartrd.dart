@@ -14,6 +14,7 @@ import 'data_5.dart';
 import 'data_6.dart';
 import 'cgatbot.dart';
 import 'library_page.dart';
+import 'lux.dart'; // Ensure Lux is correctly imported
 
 class SensorDashboard extends StatefulWidget {
   const SensorDashboard({super.key});
@@ -385,7 +386,6 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   ],
                 ),
               ),
-
               _buildDrawerItem(Icons.account_circle, '個人資料', () {
                 Navigator.pop(context);
                 Navigator.pushReplacement(
@@ -416,6 +416,10 @@ class _SensorDashboardState extends State<SensorDashboard> {
               }),
               _buildDrawerItem(Icons.lightbulb, '光照資料', () {
                 Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => Lux()), // 跳轉到 Lux 頁面
+                );
               }),
               _buildDrawerItem(Icons.chat_bubble, '阿吉同學', () {
                 Navigator.push(
@@ -434,11 +438,10 @@ class _SensorDashboardState extends State<SensorDashboard> {
             color: Colors.black,
             child: kIsWeb
                 ? Center(
-              child: Text(
-                'Web 環境不支援 RTSP 串流',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            )
+                child: Text(
+                  'Web 環境不支援 RTSP 串流',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ))
                 : (_vlcPlayerController == null || _isStreamError
                 ? Center(child: CircularProgressIndicator(color: Colors.white))
                 : VlcPlayer(
