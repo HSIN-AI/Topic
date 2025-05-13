@@ -221,7 +221,8 @@ class _Data6State extends State<Data6> {
                 setState(() {
                   currentPage = '光照資料';
                 });
-                Navigator.pop(context);
+                Navigator.push(
+                    context, MaterialPageRoute(builder: (context) => Lux())); // Jump to Lux page
               }, currentPage == '光照資料'),
               _buildDrawerItem(Icons.chat_bubble, '阿吉同學', () {
                 setState(() {
