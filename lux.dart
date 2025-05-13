@@ -8,7 +8,6 @@ import 'profile_page.dart';
 import 'dashboard.dart';
 import 'data_1.dart';
 import 'data_3.dart';
-import 'data_5.dart';
 import 'data_6.dart';
 import 'cgatbot.dart';
 import 'library_page.dart';
@@ -23,7 +22,7 @@ class Lux extends StatefulWidget {
 class _LuxState extends State<Lux> {
   List<TableRow> _tableRows = [];
   Timer? _timer;
-  String currentPage = '光照資料';
+  String currentPage = '光照資料'; // 記錄當前頁面名稱
 
   @override
   void initState() {
@@ -49,7 +48,7 @@ class _LuxState extends State<Lux> {
 
           List<TableRow> rows = [];
           rows.add(_buildTableRow(
-            ['時間戳', '感測器', '類型', '光照資料 (lux)'],
+            ['資料類型', '時間戳', '感測器', '光照資料 (lux)'], // 刪除「類型」欄位
             isHeader: true,
           ));
 
@@ -70,6 +69,7 @@ class _LuxState extends State<Lux> {
             rows.add(_buildTableRow(['今日無數據', '提示', '無資料', '無資料']));
           } else {
             for (var item in todayData) {
+              // 濾除 cnt_no 和 url 資料
               final sensor = item['sno']?.toString() ?? '無資料';
               final typeId = item['type_id']?.toString() ?? '無資料';
               final timestamp = item['timestamp']?.toString() ?? '無資料';
@@ -79,7 +79,11 @@ class _LuxState extends State<Lux> {
                   : item['value'].toString())
                   : '無資料';
 
-              rows.add(_buildTableRow([timestamp, sensor, typeId, value]));
+              // 根據 type_id 顯示資料類型，若是 6 顯示「光照資料」
+              String dataType = typeId == '6' ? '光照資料' : typeId;
+
+              // 移除「類型」欄位，僅顯示其他欄位
+              rows.add(_buildTableRow([dataType, timestamp, sensor, value]));
             }
           }
 
@@ -108,6 +112,10 @@ class _LuxState extends State<Lux> {
       });
     }
   }
+
+
+
+
 
   @override
   void dispose() {
@@ -149,6 +157,13 @@ class _LuxState extends State<Lux> {
                 ),
               ),
 
+              _buildDrawerItem(Icons.account_circle, '個人資料', () {
+                setState(() {
+                  currentPage = '個人資料';
+                });
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => ProfilePage()));
+              }, currentPage == '個人資料'),
               _buildDrawerItem(Icons.dashboard, '儀表板', () {
                 setState(() {
                   currentPage = '儀表板';
@@ -163,13 +178,7 @@ class _LuxState extends State<Lux> {
                 Navigator.push(context,
                     MaterialPageRoute(builder: (context) => LibraryPage()));
               }, currentPage == '圖書館'),
-              _buildDrawerItem(Icons.account_circle, '個人資料', () {
-                setState(() {
-                  currentPage = '個人資料';
-                });
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => ProfilePage()));
-              }, currentPage == '個人資料'),
+
               _buildDrawerItem(Icons.wb_sunny, '土壤濕度', () {
                 setState(() {
                   currentPage = '土壤濕度';
@@ -177,20 +186,14 @@ class _LuxState extends State<Lux> {
                 Navigator.push(
                     context, MaterialPageRoute(builder: (context) => Data1()));
               }, currentPage == '土壤濕度'),
-              _buildDrawerItem(Icons.thermostat, '葉面溫度', () {
+              _buildDrawerItem(Icons.thermostat, '現在溫度', () {
                 setState(() {
-                  currentPage = '葉面溫度';
+                  currentPage = '現在溫度';
                 });
                 Navigator.push(
                     context, MaterialPageRoute(builder: (context) => Data3()));
-              }, currentPage == '葉面溫度'),
-              _buildDrawerItem(Icons.eco, '碳排放', () {
-                setState(() {
-                  currentPage = '碳排放';
-                });
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => Data5()));
-              }, currentPage == '碳排放'),
+              }, currentPage == '現在溫度'),
+
               _buildDrawerItem(Icons.water_drop, '酸鹼度', () {
                 setState(() {
                   currentPage = '酸鹼度';
@@ -200,10 +203,10 @@ class _LuxState extends State<Lux> {
               }, currentPage == '酸鹼度'),
               _buildDrawerItem(Icons.lightbulb, '光照資料', () {
                 setState(() {
-                  currentPage = '光照强度';
+                  currentPage = '光照資料';
                 });
                 Navigator.pop(context);
-              }, currentPage == '光照强度'),
+              }, currentPage == '光照資料'),
               _buildDrawerItem(Icons.chat_bubble, '阿吉同學', () {
                 setState(() {
                   currentPage = '阿吉同學';
@@ -219,7 +222,7 @@ class _LuxState extends State<Lux> {
       ),
       appBar: AppBar(
         backgroundColor: Color(0xFFB0B0B0),
-        title: const Text('光照資料'),
+        title: Text(currentPage),  // 顯示當前頁面的名稱
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
@@ -318,7 +321,7 @@ class _LuxState extends State<Lux> {
           title,
           style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
         ),
-        tileColor: isActive ? Color(0xFF9E9E9E) : Colors.white,
+        tileColor: isActive ? Color(0xFF9E9E9E) : Colors.white,  // 根據是否為當前頁面來設置背景顏色
         onTap: onTap,
       ),
     );
@@ -350,6 +353,3 @@ class _LuxState extends State<Lux> {
     );
   }
 }
-
-
-
