@@ -13,6 +13,7 @@ import 'data_3.dart';
 import 'data_5.dart';
 import 'data_6.dart';
 import 'cgatbot.dart';
+import 'library_page.dart';
 
 class SensorDashboard extends StatefulWidget {
   const SensorDashboard({super.key});
@@ -357,7 +358,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
       ),
       drawer: Drawer(
         child: Container(
-          color: Colors.grey[850],
+          color: Color(0xFFF1F1F1), // Modify the drawer background color here
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
@@ -379,30 +380,42 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   ],
                 ),
               ),
-              ListTile(
-                leading: Icon(Icons.home, color: Colors.white),
-                title: Text(
-                  '首頁',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacement(
+              _buildDrawerItem(Icons.account_circle, '個人資料', () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => ProfilePage()),
+                );
+              }),
+              _buildDrawerItem(Icons.dashboard, '儀表板', () {
+                Navigator.pop(context);
+              }),
+              _buildDrawerItem(Icons.library_books, '圖書館', () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => LibraryPage()),
+                );
+              }),
+              _buildDrawerItem(Icons.wb_sunny, '土壤濕度', () {
+                Navigator.push(
+                    context, MaterialPageRoute(builder: (context) => Data1()));
+              }),
+              _buildDrawerItem(Icons.thermostat, '現在溫度', () {
+                Navigator.push(
+                    context, MaterialPageRoute(builder: (context) => Data3()));
+              }),
+              _buildDrawerItem(Icons.water_drop, '酸鹼度', () {
+                Navigator.push(
+                    context, MaterialPageRoute(builder: (context) => Data6()));
+              }),
+              _buildDrawerItem(Icons.lightbulb, '光照資料', () {
+                Navigator.pop(context);
+              }),
+              _buildDrawerItem(Icons.chat_bubble, '阿吉同學', () {
+                Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => HomePage()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.dashboard, color: Colors.white),
-                title: Text(
-                  '儀表板',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
+                    MaterialPageRoute(builder: (context) => ChatBotPage(userQuery: '')));
+              }),
             ],
           ),
         ),
@@ -496,6 +509,17 @@ class _SensorDashboardState extends State<SensorDashboard> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.black),
+      title: Text(
+        title,
+        style: TextStyle(color: Colors.black),
+      ),
+      onTap: onTap,
     );
   }
 }
