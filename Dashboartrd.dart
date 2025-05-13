@@ -5,6 +5,7 @@ import 'package:syncfusion_flutter_gauges/gauges.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:http/http.dart' as http;
 import 'home_page.dart';
 import 'profile_page.dart';
 import 'data_1.dart';
@@ -31,13 +32,26 @@ class _SensorDashboardState extends State<SensorDashboard> {
   final int _maxReconnectAttempts = 5;
   final String _webSocketUrl = 'ws://192.168.31.169:8765';
 
+  // 初始化資料變數
+  double roomTemp = 0;
+  double soilMoisture = 0;
+  double co2 = 0;
+  double ph = 0;
+  double light = 0;
+  String roomTempStatus = '';
+  String soilMoistureStatus = '';
+  String lightStatus = '';
+  String phStatus = '';
+
   @override
   void initState() {
     super.initState();
     _initializeWebSocket();
     _initializeStream();
+    _fetchData();  // Fetch data from the API
   }
 
+  // WebSocket初始化
   void _initializeWebSocket() {
     reconnectWebSocket();
   }
@@ -113,11 +127,12 @@ class _SensorDashboardState extends State<SensorDashboard> {
     }
   }
 
+  // 初始化串流
   Future<void> _initializeStream() async {
     if (kIsWeb) {
       setState(() {
         _isStreamError = true;
-        objectCountText = 'Web 環境不支援 RTSP 串流';
+        objectCountText = 'Web 環境不支援 HLS 串流'; // 修改為 HLS
       });
       return;
     }
@@ -126,7 +141,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
     await _updateStreamUrl(connectivityResult);
 
     _vlcPlayerController = VlcPlayerController.network(
-      _streamUrl,
+      _streamUrl,  // 使用 HLS URL
       autoPlay: true,
       onInit: () {
         setState(() {});
@@ -137,7 +152,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
       if (_vlcPlayerController!.value.hasError) {
         setState(() {
           _isStreamError = true;
-          objectCountText = '無法載入 RTSP 串流';
+          objectCountText = '無法載入 HLS 串流'; // 修改為 HLS
         });
         print('VLC 串流錯誤: ${_vlcPlayerController!.value.errorDescription}');
       } else if (_vlcPlayerController!.value.isPlaying) {
@@ -150,271 +165,93 @@ class _SensorDashboardState extends State<SensorDashboard> {
     });
   }
 
+  // 更新串流 URL
   Future<void> _updateStreamUrl(List<ConnectivityResult> result) async {
     if (kIsWeb) return;
 
     setState(() {
       if (result.contains(ConnectivityResult.wifi)) {
-        _streamUrl = 'rtsp://3B117161:3B117161@192.168.31.50:554/stream1';
+        _streamUrl = 'https://9a94-106-105-83-78.ngrok-free.app/stream/stream.m3u8'; // HLS URL
       } else {
-        _streamUrl = 'rtsp://3B117161:3B117161@your_public_ip:554/stream1';
+        _streamUrl = 'https://9a94-106-105-83-78.ngrok-free.app/stream/stream.m3u8'; // HLS URL
       }
     });
   }
 
-  @override
-  void dispose() {
-    if (!kIsWeb) _vlcPlayerController?.dispose();
-    _channel.sink.close();
-    super.dispose();
+  // 取得即時資料
+  Future<void> _fetchData() async {
+    final response = await http.get(Uri.parse('https://gyyonline.uk/avg_all/?date=2025-05-07'));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      _processData(data['data']);
+    } else {
+      throw Exception('Failed to load data');
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final double soilTemp = 26.5;
-    final double soilMoisture = 45.0;
-    final double leafTemp = 41.2;
-    final double co2 = 980.0;
-    final double ph = 5.8;
+  // 處理 API 資料
+  void _processData(List<dynamic> data) {
+    double temp = 0;
+    double moisture = 0;
+    double co2Value = 0;
+    double phValue = 0;
+    double lightValue = 0;
 
-    return Scaffold(
-      backgroundColor: Colors.grey[900],
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text('環境監測儀表板'),
-        centerTitle: true,
-      ),
-      drawer: Drawer(
-        child: Container(
-          color: Colors.grey[850],
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                ),
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundImage: AssetImage('assets/images/profile.jpg'),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      '阿吉同學',
-                      style: TextStyle(color: Colors.white, fontSize: 20),
-                    ),
-                  ],
-                ),
-              ),
-              ListTile(
-                leading: Icon(Icons.home, color: Colors.white),
-                title: Text(
-                  '首頁',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => HomePage()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.dashboard, color: Colors.white),
-                title: Text(
-                  '儀表板',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.account_circle, color: Colors.white),
-                title: Text(
-                  '個人資料',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ProfilePage()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.wb_sunny, color: Colors.white),
-                title: Text(
-                  '土壤溫濕度',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data1()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.thermostat, color: Colors.white),
-                title: Text(
-                  '葉面溫度',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data3()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.eco, color: Colors.white),
-                title: Text(
-                  '碳排放',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data5()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.water_drop, color: Colors.white),
-                title: Text(
-                  '酸鹼度',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => Data6()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.chat_bubble, color: Colors.white),
-                title: Text(
-                  '阿吉同學',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatBotPage(userQuery: ''),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            height: 250,
-            color: Colors.black,
-            child: kIsWeb
-                ? Center(
-              child: Text(
-                'Web 環境不支援 RTSP 串流',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            )
-                : (_vlcPlayerController == null || _isStreamError
-                ? Center(child: CircularProgressIndicator(color: Colors.white))
-                : VlcPlayer(
-              controller: _vlcPlayerController!,
-              aspectRatio: 16 / 9,
-              placeholder: Center(
-                  child: CircularProgressIndicator(color: Colors.white)),
-            )),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                Text(
-                  _getWebSocketStatusText(),
-                  style: TextStyle(
-                    color: _webSocketStatus == WebSocketStatus.error
-                        ? Colors.red
-                        : Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  objectCountText,
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: GridView.count(
-              crossAxisCount: 2,
-              padding: const EdgeInsets.all(16),
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              children: [
-                _buildGaugeCard(
-                  title: '土壤溫度 (°C)',
-                  value: soilTemp,
-                  min: 0,
-                  max: 50,
-                  normalRange: [18, 28],
-                ),
-                _buildGaugeCard(
-                  title: '土壤濕度 (%)',
-                  value: soilMoisture,
-                  min: 0,
-                  max: 100,
-                  normalRange: [30, 60],
-                ),
-                _buildGaugeCard(
-                  title: '葉面溫度 (°C)',
-                  value: leafTemp,
-                  min: 0,
-                  max: 50,
-                  normalRange: [0, 40],
-                ),
-                _buildGaugeCard(
-                  title: '碳排放 (ppm)',
-                  value: co2,
-                  min: 0,
-                  max: 2000,
-                  normalRange: [0, 1000],
-                ),
-                _buildGaugeCard(
-                  title: '酸鹼值 (pH)',
-                  value: ph,
-                  min: 3,
-                  max: 10,
-                  normalRange: [6, 7.5],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    for (var item in data) {
+      switch (item['type_id']) {
+        case 1: // 室溫
+          temp = item['avg_value'];
+          roomTempStatus = _getRoomTempStatus(temp);
+          break;
+        case 2: // 土壤濕度
+          moisture = item['avg_value'];
+          soilMoistureStatus = _getSoilMoistureStatus(moisture);
+          break;
+        case 5: // 碳排放
+          co2Value = item['avg_value'];
+          break;
+        case 4: // 酸鹼值
+          phValue = item['avg_value'];
+          phStatus = _getPhStatus(phValue);
+          break;
+        case 3: // 光照
+          lightValue = item['avg_value'];
+          lightStatus = lightValue > 800 ? "開" : "關";
+          break;
+      }
+    }
+
+    setState(() {
+      roomTemp = temp;
+      soilMoisture = moisture;
+      co2 = co2Value;
+      ph = phValue;
+      light = lightValue;
+    });
   }
 
+  // 室溫狀態判斷
+  String _getRoomTempStatus(double temp) {
+    if (temp > 25) return '溫度過高';
+    if (temp < 20) return '溫度過低';
+    return '正常';
+  }
+
+  // 土壤濕度狀態判斷
+  String _getSoilMoistureStatus(double moisture) {
+    if (moisture > 385) return '乾燥';
+    if (moisture < 290) return '過濕';
+    return '濕潤';
+  }
+
+  // 酸鹼值狀態判斷
+  String _getPhStatus(double phValue) {
+    if (phValue < 5.6 || phValue > 6.7) return '酸鹼值異常';
+    return '正常';
+  }
+
+  // 顯示 WebSocket 連線狀態
   String _getWebSocketStatusText() {
     switch (_webSocketStatus) {
       case WebSocketStatus.connecting:
@@ -428,6 +265,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
     }
   }
 
+  // 儀表盤顯示
   Widget _buildGaugeCard({
     required String title,
     required double value,
@@ -497,6 +335,166 @@ class _SensorDashboardState extends State<SensorDashboard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    if (!kIsWeb) _vlcPlayerController?.dispose();
+    _channel.sink.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[900],
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text('環境監測儀表板'),
+        centerTitle: true,
+      ),
+      drawer: Drawer(
+        child: Container(
+          color: Colors.grey[850],
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                ),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundImage: AssetImage('assets/images/profile.jpg'),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      '阿吉同學',
+                      style: TextStyle(color: Colors.white, fontSize: 20),
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: Icon(Icons.home, color: Colors.white),
+                title: Text(
+                  '首頁',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => HomePage()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.dashboard, color: Colors.white),
+                title: Text(
+                  '儀表板',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            height: 250,
+            color: Colors.black,
+            child: kIsWeb
+                ? Center(
+              child: Text(
+                'Web 環境不支援 RTSP 串流',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            )
+                : (_vlcPlayerController == null || _isStreamError
+                ? Center(child: CircularProgressIndicator(color: Colors.white))
+                : VlcPlayer(
+              controller: _vlcPlayerController!,
+              aspectRatio: 16 / 9,
+              placeholder: Center(child: CircularProgressIndicator(color: Colors.white)),
+            )),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                Text(
+                  _getWebSocketStatusText(),
+                  style: TextStyle(
+                    color: _webSocketStatus == WebSocketStatus.error
+                        ? Colors.red
+                        : Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  objectCountText,
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: 2,
+              padding: const EdgeInsets.all(16),
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+                _buildGaugeCard(
+                  title: '室溫 (°C)',
+                  value: roomTemp,
+                  min: 0,
+                  max: 50,
+                  normalRange: [20, 25],
+                ),
+                _buildGaugeCard(
+                  title: '土壤濕度 (%)',
+                  value: soilMoisture,
+                  min: 0,
+                  max: 100,
+                  normalRange: [30, 60],
+                ),
+                _buildGaugeCard(
+                  title: '碳排放 (ppm)',
+                  value: co2,
+                  min: 0,
+                  max: 2000,
+                  normalRange: [0, 1000],
+                ),
+                _buildGaugeCard(
+                  title: '酸鹼值 (pH)',
+                  value: ph,
+                  min: 3,
+                  max: 10,
+                  normalRange: [5.6, 6.7],
+                ),
+                _buildGaugeCard(
+                  title: '光照 (%)',
+                  value: light,
+                  min: 0,
+                  max: 1000,
+                  normalRange: [0, 800],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
