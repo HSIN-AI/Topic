@@ -37,7 +37,6 @@ class _SensorDashboardState extends State<SensorDashboard> {
   // 初始化資料變數
   double roomTemp = 0;
   double soilMoisture = 0;
-  double co2 = 0;
   double ph = 0;
   double light = 0;
   String roomTempStatus = '';
@@ -196,7 +195,6 @@ class _SensorDashboardState extends State<SensorDashboard> {
   void _processData(List<dynamic> data) {
     double temp = 0;
     double moisture = 0;
-    double co2Value = 0;
     double phValue = 0;
     double lightValue = 0;
 
@@ -209,9 +207,6 @@ class _SensorDashboardState extends State<SensorDashboard> {
         case 2: // 土壤濕度
           moisture = item['avg_value'];
           soilMoistureStatus = _getSoilMoistureStatus(moisture);
-          break;
-        case 5: // 碳排放
-          co2Value = item['avg_value'];
           break;
         case 4: // 酸鹼值
           phValue = item['avg_value'];
@@ -227,7 +222,6 @@ class _SensorDashboardState extends State<SensorDashboard> {
     setState(() {
       roomTemp = temp;
       soilMoisture = moisture;
-      co2 = co2Value;
       ph = phValue;
       light = lightValue;
     });
@@ -359,7 +353,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
       ),
       drawer: Drawer(
         child: Container(
-          color: Color(0xFFF1F1F1), // Modify the drawer background color here
+          color: Color(0xFFF1F1F1),
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
@@ -372,11 +366,11 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   children: [
                     CircleAvatar(
                       radius: 40,
-                      backgroundImage: AssetImage('assets/images/gkhlogo.png'), // 這裡是新的 logo 圖片
+                      backgroundImage: AssetImage('assets/images/gkhlogo.png'),
                     ),
                     SizedBox(height: 10),
                     Text(
-                      'GJH監測小站', // 顯示新的標題
+                      'GJH監測小站',
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
@@ -418,7 +412,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => Lux()), // 跳轉到 Lux 頁面
+                  MaterialPageRoute(builder: (context) => Lux()),
                 );
               }),
               _buildDrawerItem(Icons.chat_bubble, '阿吉同學', () {
@@ -491,13 +485,6 @@ class _SensorDashboardState extends State<SensorDashboard> {
                   min: 0,
                   max: 100,
                   normalRange: [30, 60],
-                ),
-                _buildGaugeCard(
-                  title: '碳排放 (ppm)',
-                  value: co2,
-                  min: 0,
-                  max: 2000,
-                  normalRange: [0, 1000],
                 ),
                 _buildGaugeCard(
                   title: '酸鹼值 (pH)',
