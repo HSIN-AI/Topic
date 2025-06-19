@@ -14,7 +14,10 @@ import 'data_5.dart';
 import 'data_6.dart';
 import 'cgatbot.dart';
 import 'library_page.dart';
-import 'lux.dart'; // Ensure Lux is correctly imported
+import 'lux.dart';
+import 'chart.dart';
+import 'dashboard.dart';
+import 'vlc_stream_widget.dart';
 
 class SensorDashboard extends StatefulWidget {
   const SensorDashboard({super.key});
@@ -34,7 +37,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
   final int _maxReconnectAttempts = 5;
   final String _webSocketUrl = 'ws://192.168.31.169:8765';
 
-  // 初始化資料變數
+  // 初始資料變數
   double roomTemp = 0;
   double soilMoisture = 0;
   double ph = 0;
@@ -48,11 +51,11 @@ class _SensorDashboardState extends State<SensorDashboard> {
   void initState() {
     super.initState();
     _initializeWebSocket();
-    _initializeStream();
-    _fetchData();  // Fetch data from the API
+    _initializeStream(); // 加入此行來初始化串流
+    _fetchData();
   }
 
-  // WebSocket初始化
+  // WebSocket 初始化和連接
   void _initializeWebSocket() {
     reconnectWebSocket();
   }
@@ -63,11 +66,9 @@ class _SensorDashboardState extends State<SensorDashboard> {
         _webSocketStatus = WebSocketStatus.error;
         objectCountText = '無法連接到 WebSocket 伺服器';
       });
-      print('達到最大重試次數，停止重連');
       return;
     }
 
-    print('嘗試連接到 WebSocket: $_webSocketUrl (第 ${_reconnectAttempts + 1} 次)');
     setState(() {
       _webSocketStatus = WebSocketStatus.connecting;
       objectCountText = '正在連線到 WebSocket...';
@@ -75,57 +76,53 @@ class _SensorDashboardState extends State<SensorDashboard> {
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(_webSocketUrl));
-      print('WebSocket 連線初始化成功');
       _channel.stream.listen(
             (message) {
-          print('收到 WebSocket 訊息: $message');
-          try {
-            final data = jsonDecode(message);
-            final counts = data['counts'];
-            setState(() {
-              _webSocketStatus = WebSocketStatus.connected;
-              _reconnectAttempts = 0;
-              objectCountText = counts.entries
-                  .map((entry) => '${entry.key}: ${entry.value}')
-                  .join('\n');
-            });
-            print('成功解析並更新物件計數');
-          } catch (e) {
-            print('JSON 解析錯誤: $e');
-            setState(() {
-              objectCountText = '資料格式錯誤';
-              _webSocketStatus = WebSocketStatus.error;
-            });
-          }
+          _handleWebSocketMessage(message);
         },
-        onError: (error) {
-          print('WebSocket 錯誤: $error');
-          setState(() {
-            _webSocketStatus = WebSocketStatus.error;
-            objectCountText = '連線錯誤，重試中...';
-          });
-          _reconnectAttempts++;
-          Future.delayed(Duration(seconds: 5), reconnectWebSocket);
-        },
-        onDone: () {
-          print('WebSocket 連線關閉');
-          setState(() {
-            _webSocketStatus = WebSocketStatus.disconnected;
-            objectCountText = '連線斷開，重試中...';
-          });
-          _reconnectAttempts++;
-          Future.delayed(Duration(seconds: 5), reconnectWebSocket);
-        },
+        onError: _handleWebSocketError,
+        onDone: _handleWebSocketDone,
       );
     } catch (e) {
-      print('WebSocket 初始化錯誤: $e');
-      setState(() {
-        _webSocketStatus = WebSocketStatus.error;
-        objectCountText = '連線初始化失敗';
-      });
-      _reconnectAttempts++;
-      Future.delayed(Duration(seconds: 5), reconnectWebSocket);
+      _handleWebSocketError(e);
     }
+  }
+
+  // 處理 WebSocket 訊息
+  void _handleWebSocketMessage(String message) {
+    try {
+      final data = jsonDecode(message);
+      final counts = data['counts'];
+      setState(() {
+        _webSocketStatus = WebSocketStatus.connected;
+        _reconnectAttempts = 0;
+        objectCountText = counts.entries
+            .map((entry) => '${entry.key}: ${entry.value}')
+            .join('\n');
+      });
+    } catch (e) {
+      _handleWebSocketError(e);
+    }
+  }
+
+  // 處理 WebSocket 錯誤
+  void _handleWebSocketError(error) {
+    setState(() {
+      _webSocketStatus = WebSocketStatus.error;
+      objectCountText = '連線錯誤，重試中...';
+    });
+    _reconnectAttempts++;
+    Future.delayed(Duration(seconds: 5), reconnectWebSocket);
+  }
+
+  // 處理 WebSocket 關閉
+  void _handleWebSocketDone() {
+    setState(() {
+      _webSocketStatus = WebSocketStatus.disconnected;
+      objectCountText = '連線斷開，重試中...';
+    });
+    _reconnectAttempts++;
+    Future.delayed(Duration(seconds: 5), reconnectWebSocket);
   }
 
   // 初始化串流
@@ -133,55 +130,39 @@ class _SensorDashboardState extends State<SensorDashboard> {
     if (kIsWeb) {
       setState(() {
         _isStreamError = true;
-        objectCountText = 'Web 環境不支援 HLS 串流'; // 修改為 HLS
+        objectCountText = 'Web 環境不支援 HLS 串流';
       });
       return;
     }
 
-    final connectivityResult = await Connectivity().checkConnectivity();
-    await _updateStreamUrl(connectivityResult);
-
-    _vlcPlayerController = VlcPlayerController.network(
-      _streamUrl,  // 使用 HLS URL
-      autoPlay: true,
-      onInit: () {
-        setState(() {});
-      },
-    );
-
-    _vlcPlayerController!.addListener(() {
-      if (_vlcPlayerController!.value.hasError) {
-        setState(() {
-          _isStreamError = true;
-          objectCountText = '無法載入 HLS 串流'; // 修改為 HLS
-        });
-        print('VLC 串流錯誤: ${_vlcPlayerController!.value.errorDescription}');
-      } else if (_vlcPlayerController!.value.isPlaying) {
-        if (_isStreamError) {
-          setState(() {
-            _isStreamError = false;
-          });
-        }
-      }
-    });
-  }
-
-  // 更新串流 URL
-  Future<void> _updateStreamUrl(List<ConnectivityResult> result) async {
-    if (kIsWeb) return;
+    // 釋放舊的控制器
+    _vlcPlayerController?.dispose();
 
     setState(() {
-      if (result.contains(ConnectivityResult.wifi)) {
-        _streamUrl = 'https://9a94-106-105-83-78.ngrok-free.app/stream/stream.m3u8'; // HLS URL
-      } else {
-        _streamUrl = 'https://9a94-106-105-83-78.ngrok-free.app/stream/stream.m3u8'; // HLS URL
-      }
+      _isStreamError = false;
+      objectCountText = '正在載入串流...';
     });
+
+    // 重新初始化播放器
+    _vlcPlayerController = VlcPlayerController.network(
+      'https://32ce-106-105-83-78.ngrok-free.app/stream/stream.m3u8',
+      autoPlay: true,
+      hwAcc: HwAcc.full,
+      options: VlcPlayerOptions(
+        advanced: VlcAdvancedOptions([VlcAdvancedOptions.networkCaching(1500)]),
+        http: VlcHttpOptions([VlcHttpOptions.httpReconnect(true)]),
+      ),
+      onInit: () {
+        setState(() {
+          objectCountText = '串流已加載';
+        });
+      },
+    );
   }
 
   // 取得即時資料
   Future<void> _fetchData() async {
-    final response = await http.get(Uri.parse('https://gyyonline.uk/avg_all/?date=2025-05-07'));
+    final response = await http.get(Uri.parse('https://gyyonline.uk/avg_all/?date=2025-06-19'));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -227,21 +208,21 @@ class _SensorDashboardState extends State<SensorDashboard> {
     });
   }
 
-  // 室溫狀態判斷
+  // 判斷室溫狀態
   String _getRoomTempStatus(double temp) {
     if (temp > 25) return '溫度過高';
     if (temp < 20) return '溫度過低';
     return '正常';
   }
 
-  // 土壤濕度狀態判斷
+  // 判斷土壤濕度狀態
   String _getSoilMoistureStatus(double moisture) {
     if (moisture > 385) return '乾燥';
     if (moisture < 290) return '過濕';
     return '濕潤';
   }
 
-  // 酸鹼值狀態判斷
+  // 判斷酸鹼值狀態
   String _getPhStatus(double phValue) {
     if (phValue < 5.6 || phValue > 6.7) return '酸鹼值異常';
     return '正常';
@@ -337,9 +318,18 @@ class _SensorDashboardState extends State<SensorDashboard> {
 
   @override
   void dispose() {
-    if (!kIsWeb) _vlcPlayerController?.dispose();
+    if (_vlcPlayerController != null) {
+      _vlcPlayerController!.dispose();
+    }
     _channel.sink.close();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 每次回到頁面時重新初始化串流
+    _initializeStream();
   }
 
   @override
@@ -358,24 +348,15 @@ class _SensorDashboardState extends State<SensorDashboard> {
             padding: EdgeInsets.zero,
             children: [
               DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Color(0xFFF1F1F1),
-                ),
+                decoration: BoxDecoration(color: Color(0xFFF1F1F1)),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundImage: AssetImage('assets/images/gkhlogo.png'),
-                    ),
+                    CircleAvatar(radius: 40, backgroundImage: AssetImage('assets/images/gkhlogo.png')),
                     SizedBox(height: 10),
                     Text(
                       'GJH監測小站',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 20,
-                        color: Colors.black,
-                      ),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 20, color: Colors.black),
                     ),
                   ],
                 ),
@@ -432,10 +413,11 @@ class _SensorDashboardState extends State<SensorDashboard> {
             color: Colors.black,
             child: kIsWeb
                 ? Center(
-                child: Text(
-                  'Web 環境不支援 RTSP 串流',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ))
+              child: Text(
+                'Web 環境不支援 RTSP 串流',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            )
                 : (_vlcPlayerController == null || _isStreamError
                 ? Center(child: CircularProgressIndicator(color: Colors.white))
                 : VlcPlayer(
@@ -451,17 +433,12 @@ class _SensorDashboardState extends State<SensorDashboard> {
                 Text(
                   _getWebSocketStatusText(),
                   style: TextStyle(
-                    color: _webSocketStatus == WebSocketStatus.error
-                        ? Colors.red
-                        : Colors.white,
+                    color: _webSocketStatus == WebSocketStatus.error ? Colors.red : Colors.white,
                     fontSize: 14,
                   ),
                 ),
                 SizedBox(height: 8),
-                Text(
-                  objectCountText,
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
+                Text(objectCountText, style: TextStyle(color: Colors.white, fontSize: 16)),
               ],
             ),
           ),
@@ -472,34 +449,10 @@ class _SensorDashboardState extends State<SensorDashboard> {
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
               children: [
-                _buildGaugeCard(
-                  title: '室溫 (°C)',
-                  value: roomTemp,
-                  min: 0,
-                  max: 50,
-                  normalRange: [20, 25],
-                ),
-                _buildGaugeCard(
-                  title: '土壤濕度 (%)',
-                  value: soilMoisture,
-                  min: 0,
-                  max: 100,
-                  normalRange: [30, 60],
-                ),
-                _buildGaugeCard(
-                  title: '酸鹼值 (pH)',
-                  value: ph,
-                  min: 3,
-                  max: 10,
-                  normalRange: [5.6, 6.7],
-                ),
-                _buildGaugeCard(
-                  title: '光照 (%)',
-                  value: light,
-                  min: 0,
-                  max: 1000,
-                  normalRange: [0, 800],
-                ),
+                _buildGaugeCard(title: '室溫 (°C)', value: roomTemp, min: 0, max: 50, normalRange: [20, 25]),
+                _buildGaugeCard(title: '土壤濕度 (%)', value: soilMoisture, min: 0, max: 100, normalRange: [30, 60]),
+                _buildGaugeCard(title: '酸鹼值 (pH)', value: ph, min: 3, max: 10, normalRange: [5.6, 6.7]),
+                _buildGaugeCard(title: '光照 (%)', value: light, min: 0, max: 1000, normalRange: [0, 800]),
               ],
             ),
           ),
@@ -511,10 +464,7 @@ class _SensorDashboardState extends State<SensorDashboard> {
   Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
       leading: Icon(icon, color: Colors.black),
-      title: Text(
-        title,
-        style: TextStyle(color: Colors.black),
-      ),
+      title: Text(title, style: TextStyle(color: Colors.black)),
       onTap: onTap,
     );
   }
