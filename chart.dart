@@ -1,4 +1,4 @@
-// 加入必要 import
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -13,8 +13,7 @@ import 'data_5.dart';
 import 'data_6.dart';
 import 'cgatbot.dart';
 import 'lux.dart';
-import 'package:flutter_app/pages/Dashboard.dart';  // 確保匯入路徑正確
-
+import 'package:flutter_app/pages/Dashboard.dart';
 
 class ChartPage extends StatefulWidget {
   const ChartPage({super.key});
@@ -36,12 +35,59 @@ class _ChartPageState extends State<ChartPage> {
   List<String> humidityDates = [];
   List<double> avgHumidities = [];
 
+  final List<Map<String, dynamic>> _dummySuggestions = [
+    {
+      "suggestion_type": "灌溉",
+      "message": "土壤濕度過低，建議今晚灌溉 10 分鐘",
+      "priority": "高",
+      "timestamp": "2025-06-19T08:00:00"
+    },
+    {
+      "suggestion_type": "施肥",
+      "message": "土壤偏酸，建議施用 100g/m² 石灰",
+      "priority": "中",
+      "timestamp": "2025-06-18T12:00:00"
+    },
+    {
+      "suggestion_type": "環境調整",
+      "message": "溫度過高，建議開啟通風設備",
+      "priority": "高",
+      "timestamp": "2025-06-19T07:30:00"
+    },
+  ];
+
+  Timer? _refreshTimer;
+  bool isLoading = false;
+
   @override
   void initState() {
     super.initState();
-    _fetchLuxData();
-    _fetchTempData();
-    _fetchHumidityData();
+    _loadAllData();
+    _refreshTimer = Timer.periodic(Duration(minutes: 5), (timer) {
+      _loadAllData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadAllData() async {
+    setState(() => isLoading = true);
+    try {
+      await Future.wait([
+        _fetchLuxData(),
+        _fetchTempData(),
+        _fetchHumidityData(),
+      ]);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('資料載入失敗，請稍後再試')),
+      );
+    }
+    setState(() => isLoading = false);
   }
 
   Future<void> _fetchLuxData() async {
@@ -75,6 +121,8 @@ class _ChartPageState extends State<ChartPage> {
   }
 
   void _processLuxData(List<dynamic> data) {
+    luxDates.clear();
+    luxCounts.clear();
     List<FlSpot> spots = [];
     for (var i = 0; i < data.length; i++) {
       String date = data[i]['date'];
@@ -99,6 +147,8 @@ class _ChartPageState extends State<ChartPage> {
   }
 
   void _processTempData(List<dynamic> data) {
+    tempDates.clear();
+    avgTemps.clear();
     List<FlSpot> spots = [];
     for (var i = 0; i < data.length; i++) {
       String date = data[i]['date'];
@@ -123,6 +173,8 @@ class _ChartPageState extends State<ChartPage> {
   }
 
   void _processHumidityData(List<dynamic> data) {
+    humidityDates.clear();
+    avgHumidities.clear();
     List<FlSpot> spots = [];
     for (var i = 0; i < data.length; i++) {
       String date = data[i]['date'];
@@ -175,8 +227,21 @@ class _ChartPageState extends State<ChartPage> {
       backgroundColor: Colors.grey[900],
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('近五日平均圖表', style: TextStyle(color: Colors.white)),
+        title: const Text('近五日平均圖表與番茄建議', style: TextStyle(color: Colors.white)),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: isLoading
+                ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+            )
+                : Icon(Icons.refresh, color: Colors.white),
+            onPressed: isLoading ? null : _loadAllData,
+            tooltip: '手動刷新資料',
+          ),
+        ],
       ),
       drawer: Drawer(
         child: Container(
@@ -216,11 +281,9 @@ class _ChartPageState extends State<ChartPage> {
               _buildDrawerItem(Icons.lightbulb, '光照資料', () {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => Lux()));
               }),
-
               _buildDrawerItem(Icons.chat_bubble, '阿吉同學', () {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => ChatBotPage(userQuery: '')));
               }),
-
               _buildDrawerItem(Icons.show_chart, '圖表', () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (context) => ChartPage()));
@@ -229,9 +292,9 @@ class _ChartPageState extends State<ChartPage> {
           ),
         ),
       ),
-
-
-      body: SingleChildScrollView(
+      body: isLoading
+          ? Center(child: CircularProgressIndicator(color: Colors.white))
+          : SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
@@ -240,6 +303,8 @@ class _ChartPageState extends State<ChartPage> {
               _buildChartSection('近五日光照時數', luxChartData, luxDates, minLuxX, maxLuxX, minLuxY, maxLuxY),
               _buildChartSection('近五日平均溫度', tempChartData, tempDates, minTempX, maxTempX, minTempY, maxTempY),
               _buildChartSection('近五日平均土壤濕度', humidityChartData, humidityDates, minHumidityX, maxHumidityX, minHumidityY, maxHumidityY),
+              SizedBox(height: 30),
+              _buildTomatoSuggestionSection(),
             ],
           ),
         ),
@@ -302,6 +367,55 @@ class _ChartPageState extends State<ChartPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTomatoSuggestionSection() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white12,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '番茄種植建議',
+            style: TextStyle(color: Colors.orangeAccent, fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 12),
+          ListView.separated(
+            physics: NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            itemCount: _dummySuggestions.length,
+            separatorBuilder: (context, index) => Divider(color: Colors.white24),
+            itemBuilder: (context, index) {
+              final suggestion = _dummySuggestions[index];
+              return ListTile(
+                leading: Icon(
+                  Icons.agriculture,
+                  color: suggestion['priority'] == '高' ? Colors.redAccent : Colors.amber,
+                ),
+                title: Text(
+                  suggestion['message'] ?? '無內容',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  '類型: ${suggestion['suggestion_type'] ?? '未知'}  •  優先級: ${suggestion['priority'] ?? '-'}',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                trailing: Text(
+                  suggestion['timestamp'] != null
+                      ? DateFormat('MM/dd HH:mm').format(DateTime.parse(suggestion['timestamp']))
+                      : '',
+                  style: TextStyle(color: Colors.white54, fontSize: 10),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }
