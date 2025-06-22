@@ -269,9 +269,14 @@ class _SensorDashboardState extends State<SensorDashboard> {
       backgroundColor: Colors.grey[900],
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('環境監測儀表板'),
+        iconTheme: const IconThemeData(color: Colors.white), // ⬅️ 加這行
+        title: const Text(
+          '環境監測儀表板',
+          style: TextStyle(color: Colors.white), // ⬅️ 確保標題文字也是白色
+        ),
         centerTitle: true,
       ),
+
       drawer: Drawer(
         child: Container(
           color: const Color(0xFFF1F1F1),
