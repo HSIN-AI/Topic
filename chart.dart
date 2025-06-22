@@ -14,6 +14,9 @@ import 'data_6.dart';
 import 'cgatbot.dart';
 import 'lux.dart';
 import 'package:flutter_app/pages/Dashboard.dart';
+import 'package:flutter_app/pages/chart.dart';
+
+
 
 class ChartPage extends StatefulWidget {
   const ChartPage({super.key});
@@ -23,6 +26,8 @@ class ChartPage extends StatefulWidget {
 }
 
 class _ChartPageState extends State<ChartPage> {
+  String currentPage = '圖表分析'; // 1️⃣ 新增目前頁面名稱
+
   List<LineChartBarData> luxChartData = [];
   List<String> luxDates = [];
   List<int> luxCounts = [];
@@ -55,6 +60,25 @@ class _ChartPageState extends State<ChartPage> {
       "timestamp": "2025-06-19T07:30:00"
     },
   ];
+
+  // 2️⃣ 新增 Data1 風格的 DrawerItem 建構器
+  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap, bool isActive) {
+    return MouseRegion(
+      onEnter: (_) => setState(() {}),
+      onExit: (_) => setState(() {}),
+      child: ListTile(
+        leading: Icon(icon, color: Colors.black),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
+        ),
+        tileColor: isActive ? Color(0xFF9E9E9E) : Colors.white,
+        onTap: onTap,
+      ),
+    );
+  }
+
+
 
   Timer? _refreshTimer;
   bool isLoading = false;
@@ -126,10 +150,12 @@ class _ChartPageState extends State<ChartPage> {
     List<FlSpot> spots = [];
     for (var i = 0; i < data.length; i++) {
       String date = data[i]['date'];
-      int luxCount = data[i]['high_lux_count'];
+      int originalLuxCount = data[i]['high_lux_count'];
+      double halfLuxCount = originalLuxCount / 2;
+
       luxDates.add(date);
-      luxCounts.add(luxCount);
-      spots.add(FlSpot(i.toDouble(), luxCount.toDouble()));
+      luxCounts.add(originalLuxCount); // 保留原始值給 Y 軸使用
+      spots.add(FlSpot(i.toDouble(), halfLuxCount));
     }
     setState(() {
       luxChartData = [
@@ -145,6 +171,7 @@ class _ChartPageState extends State<ChartPage> {
       ];
     });
   }
+
 
   void _processTempData(List<dynamic> data) {
     tempDates.clear();
@@ -198,20 +225,14 @@ class _ChartPageState extends State<ChartPage> {
     });
   }
 
-  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.black),
-      title: Text(title, style: TextStyle(color: Colors.black)),
-      onTap: onTap,
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
     double minLuxX = 0;
     double maxLuxX = luxDates.length.toDouble() - 1;
-    double minLuxY = luxCounts.isNotEmpty ? luxCounts.reduce((a, b) => a < b ? a : b).toDouble() : 0;
-    double maxLuxY = luxCounts.isNotEmpty ? luxCounts.reduce((a, b) => a > b ? a : b).toDouble() : 0;
+    double minLuxY = luxCounts.isNotEmpty ? luxCounts.reduce((a, b) => a < b ? a : b).toDouble() / 2 : 0;
+    double maxLuxY = luxCounts.isNotEmpty ? luxCounts.reduce((a, b) => a > b ? a : b).toDouble() / 2 : 0;
 
     double minTempX = 0;
     double maxTempX = tempDates.length.toDouble() - 1;
@@ -256,42 +277,62 @@ class _ChartPageState extends State<ChartPage> {
                   children: [
                     CircleAvatar(radius: 40, backgroundImage: AssetImage('assets/images/gkhlogo.png')),
                     SizedBox(height: 10),
-                    Text('GJH監測小站', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 20, color: Colors.black)),
+                    Text(
+                      'GKH監測小站',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 20, color: Colors.black),
+                    ),
                   ],
                 ),
               ),
               _buildDrawerItem(Icons.account_circle, '個人資料', () {
+                setState(() => currentPage = '個人資料');
                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ProfilePage()));
-              }),
+              }, currentPage == '個人資料'),
+
               _buildDrawerItem(Icons.dashboard, '儀表板', () {
-                Navigator.pop(context);
-              }),
+                setState(() => currentPage = '儀表板');
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => SensorDashboard()));
+              }, currentPage == '儀表板'),
+
               _buildDrawerItem(Icons.library_books, '圖書館', () {
+                setState(() => currentPage = '圖書館');
                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LibraryPage()));
-              }),
+              }, currentPage == '圖書館'),
+
               _buildDrawerItem(Icons.wb_sunny, '土壤濕度', () {
+                setState(() => currentPage = '土壤濕度');
                 Navigator.push(context, MaterialPageRoute(builder: (context) => Data1()));
-              }),
+              }, currentPage == '土壤濕度'),
+
               _buildDrawerItem(Icons.thermostat, '現在溫度', () {
+                setState(() => currentPage = '現在溫度');
                 Navigator.push(context, MaterialPageRoute(builder: (context) => Data3()));
-              }),
+              }, currentPage == '現在溫度'),
+
               _buildDrawerItem(Icons.water_drop, '酸鹼度', () {
+                setState(() => currentPage = '酸鹼度');
                 Navigator.push(context, MaterialPageRoute(builder: (context) => Data6()));
-              }),
+              }, currentPage == '酸鹼度'),
+
               _buildDrawerItem(Icons.lightbulb, '光照資料', () {
+                setState(() => currentPage = '光照資料');
                 Navigator.push(context, MaterialPageRoute(builder: (context) => Lux()));
-              }),
+              }, currentPage == '光照資料'),
+
               _buildDrawerItem(Icons.chat_bubble, '阿吉同學', () {
+                setState(() => currentPage = '阿吉同學');
                 Navigator.push(context, MaterialPageRoute(builder: (context) => ChatBotPage(userQuery: '')));
-              }),
-              _buildDrawerItem(Icons.show_chart, '圖表', () {
-                Navigator.pop(context);
+              }, currentPage == '阿吉同學'),
+
+              _buildDrawerItem(Icons.insert_chart, '圖表分析', () {
+                setState(() => currentPage = '圖表分析');
                 Navigator.push(context, MaterialPageRoute(builder: (context) => ChartPage()));
-              }),
+              }, currentPage == '圖表分析'),
             ],
           ),
         ),
       ),
+
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: Colors.white))
           : SingleChildScrollView(
@@ -302,7 +343,16 @@ class _ChartPageState extends State<ChartPage> {
             children: [
               _buildChartSection('近五日光照時數', luxChartData, luxDates, minLuxX, maxLuxX, minLuxY, maxLuxY),
               _buildChartSection('近五日平均溫度', tempChartData, tempDates, minTempX, maxTempX, minTempY, maxTempY),
-              _buildChartSection('近五日平均土壤濕度', humidityChartData, humidityDates, minHumidityX, maxHumidityX, minHumidityY, maxHumidityY),
+              _buildChartSection(
+                '近五日平均土壤濕度',
+                humidityChartData,
+                humidityDates,
+                minHumidityX,
+                maxHumidityX,
+                60,  // 固定最小值
+                100, // 固定最大值
+              ),
+
               SizedBox(height: 30),
               _buildTomatoSuggestionSection(),
             ],
@@ -321,6 +371,12 @@ class _ChartPageState extends State<ChartPage> {
       double minY,
       double maxY,
       ) {
+    // 濕度圖表強制設定 Y 軸 60~100 每 5 單位
+    final isHumidityChart = title.contains('土壤濕度');
+    final fixedMinY = isHumidityChart ? 60.0 : minY;
+    final fixedMaxY = isHumidityChart ? 100.0 : maxY;
+    final yInterval = isHumidityChart ? 5.0 : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -340,7 +396,11 @@ class _ChartPageState extends State<ChartPage> {
                   bottomTitles: SideTitles(
                     showTitles: true,
                     reservedSize: 40,
-                    getTextStyles: (value) => TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                    getTextStyles: (value) => TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
                     getTitles: (value) {
                       int index = value.toInt();
                       if (index >= 0 && index < xDates.length) {
@@ -352,7 +412,12 @@ class _ChartPageState extends State<ChartPage> {
                   ),
                   leftTitles: SideTitles(
                     showTitles: true,
-                    getTextStyles: (value) => TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                    interval: yInterval,
+                    getTextStyles: (value) => TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
                     margin: 12,
                   ),
                 ),
@@ -360,8 +425,8 @@ class _ChartPageState extends State<ChartPage> {
                 lineBarsData: chartData,
                 minX: minX,
                 maxX: maxX,
-                minY: minY,
-                maxY: maxY,
+                minY: fixedMinY,
+                maxY: fixedMaxY,
               ),
             ),
           ),
@@ -369,6 +434,7 @@ class _ChartPageState extends State<ChartPage> {
       ],
     );
   }
+
 
   Widget _buildTomatoSuggestionSection() {
     return Container(
@@ -419,5 +485,3 @@ class _ChartPageState extends State<ChartPage> {
     );
   }
 }
-
-
