@@ -21,6 +21,8 @@ import 'data_6.dart';
 import 'cgatbot.dart';
 import 'library_page.dart';
 import 'lux.dart'; // Added import for Lux
+import 'package:flutter_app/pages/chart.dart';
+
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -35,6 +37,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   final ImagePicker _picker = ImagePicker();
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
+  String currentPage = '個人資料'; // 預設目前頁面名稱為 Profile
+
 
   @override
   void initState() {
@@ -98,9 +102,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             padding: EdgeInsets.zero,
             children: [
               DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Color(0xFFF1F1F1),
-                ),
+                decoration: BoxDecoration(color: Color(0xFFF1F1F1)),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -111,55 +113,62 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                     SizedBox(height: 10),
                     Text(
                       'GKH監測小站',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 20,
-                        color: Colors.black,
-                      ),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 20, color: Colors.black),
                     ),
                   ],
                 ),
               ),
               _buildDrawerItem(Icons.account_circle, '個人資料', () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => ProfilePage()));
-              }),
+                setState(() => currentPage = '個人資料');
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ProfilePage()));
+              }, currentPage == '個人資料'),
+
               _buildDrawerItem(Icons.dashboard, '儀表板', () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => SensorDashboard()));
-              }),
+                setState(() => currentPage = '儀表板');
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => SensorDashboard()));
+              }, currentPage == '儀表板'),
+
               _buildDrawerItem(Icons.library_books, '圖書館', () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => LibraryPage()));
-              }),
+                setState(() => currentPage = '圖書館');
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LibraryPage()));
+              }, currentPage == '圖書館'),
 
               _buildDrawerItem(Icons.wb_sunny, '土壤濕度', () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => Data1()));
-              }),
+                setState(() => currentPage = '土壤濕度');
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => Data1()));
+              }, currentPage == '土壤濕度'),
+
               _buildDrawerItem(Icons.thermostat, '現在溫度', () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => Data3()));
-              }),
+                setState(() => currentPage = '現在溫度');
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => Data3()));
+              }, currentPage == '現在溫度'),
 
               _buildDrawerItem(Icons.water_drop, '酸鹼度', () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => Data6()));
-              }),
+                setState(() => currentPage = '酸鹼度');
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => Data6()));
+              }, currentPage == '酸鹼度'),
+
               _buildDrawerItem(Icons.lightbulb, '光照資料', () {
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => Lux()));
-              }),
+                setState(() => currentPage = '光照資料');
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => Lux()));
+              }, currentPage == '光照資料'),
+
               _buildDrawerItem(Icons.chat_bubble, '阿吉同學', () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => ChatBotPage(userQuery: '')));
-              }),
+                setState(() => currentPage = '阿吉同學');
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ChatBotPage(userQuery: '')));
+              }, currentPage == '阿吉同學'),
+
+              _buildDrawerItem(Icons.insert_chart, '圖表分析', () {
+                setState(() {
+                  currentPage = '圖表分析';
+                });
+                Navigator.push(context, MaterialPageRoute(builder: (context) => ChartPage()));
+              }, currentPage == '圖表分析'),
             ],
           ),
         ),
       ),
+
       appBar: AppBar(
         backgroundColor: Color(0xFF262626),
         title: const Text('個人資料'),
@@ -371,14 +380,19 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.black),
-      title: Text(
-        title,
-        style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
+  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap, bool isActive) {
+    return MouseRegion(
+      onEnter: (_) => setState(() {}),
+      onExit: (_) => setState(() {}),
+      child: ListTile(
+        leading: Icon(icon, color: Colors.black),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(fontSize: 18, color: Colors.black),
+        ),
+        tileColor: isActive ? Color(0xFF9E9E9E) : Colors.white, // 加上選中效果
+        onTap: onTap,
       ),
-      onTap: onTap,
     );
   }
 }
