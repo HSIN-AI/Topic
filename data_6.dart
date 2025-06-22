@@ -14,6 +14,8 @@ import 'data_6.dart';
 import 'cgatbot.dart';
 import 'library_page.dart';
 import 'lux.dart'; // Ensure Lux is correctly imported
+import 'package:flutter_app/pages/chart.dart';
+
 
 class Data6 extends StatefulWidget {
   const Data6({Key? key}) : super(key: key);
@@ -47,7 +49,7 @@ class _Data6State extends State<Data6> {
       if (response.statusCode == 200) {
         final jsonResult = json.decode(response.body);
 
-        // Handle possible data formats (list or {"data": [...]})
+        // Handle possible data formats (list or {"data": [...]}),
         final data = jsonResult is List
             ? jsonResult
             : (jsonResult['data'] as List?) ?? [];
@@ -61,11 +63,11 @@ class _Data6State extends State<Data6> {
 
         List<TableRow> rows = [];
         rows.add(_buildTableRow(
-          ['時間戳','感測器', '數據序號', '類型',  '酸鹼值 (pH)'],
+          ['資料類型', '時間戳', '感測器', '酸鹼值 (pH)'],
           isHeader: true,
         ));
 
-        // Filter data for today
+        // Filter data for today and type_id == 4
         final todayData = data.where((item) {
           final timestampStr = item['timestamp']?.toString();
           if (timestampStr == null) {
@@ -78,7 +80,7 @@ class _Data6State extends State<Data6> {
             DateTime(timestamp.year, timestamp.month, timestamp.day);
             final isToday = timestampDate == today;
             print('Item timestamp: $timestampStr, isToday: $isToday');
-            return isToday;
+            return isToday && item['type_id'] == 4; // Only include type_id == 4
           } catch (e) {
             print('Invalid timestamp in item: $item, error: $e');
             return false; // Skip invalid timestamps
@@ -90,21 +92,31 @@ class _Data6State extends State<Data6> {
         // Check if there is data for today
         if (todayData.isEmpty) {
           print('No data for today, showing no-data message');
-          rows.add(_buildTableRow(['提示', '無資料', '無資料', '今日無數據', '無資料']));
+          rows.add(_buildTableRow(['提示', '無資料', '無資料', '今日無數據']));
         } else {
           for (var item in todayData) {
+            final typeId = item['type_id'] == 4 ? '酸鹼值' : '無資料'; // Show "酸鹼值" for type_id 4
             final timestamp = item['timestamp']?.toString() ?? '無資料';
             final sensor = item['sno']?.toString() ?? '無資料';
-            final cntNo = item['cnt_no']?.toString() ?? '無資料';
-            final typeId = item['type_id']?.toString() ?? '無資料';
             final value = item['value'] != null
                 ? (item['value'] is num
                 ? item['value'].toStringAsFixed(1)
                 : item['value'].toString())
                 : '無資料';
 
-            print('Adding row: [$timestamp,$sensor, $cntNo, $typeId,  $value]');
-            rows.add(_buildTableRow([timestamp,sensor, cntNo, typeId, value]));
+            // Check if value is within the normal range (5.6 to 6.7), otherwise mark as abnormal
+            final isAbnormal = value != '無資料' &&
+                (double.tryParse(value) == null ||
+                    double.parse(value) < 5.6 ||
+                    double.parse(value) > 6.7);
+
+            print('Adding row: [$typeId, $timestamp, $sensor, $value]');
+
+            // Add row with color change if abnormal
+            rows.add(_buildTableRow(
+              [typeId, timestamp, sensor, value],
+              isAbnormal: isAbnormal,
+            ));
           }
         }
 
@@ -115,7 +127,7 @@ class _Data6State extends State<Data6> {
         print('HTTP Error: Status code ${response.statusCode}');
         setState(() {
           _tableRows = [
-            _buildTableRow(['錯誤', '狀態碼 ${response.statusCode}', '無資料 Capitale', '無資料', '無資料'])
+            _buildTableRow(['錯誤', '狀態碼 ${response.statusCode}', '無資料', '無資料'])
           ];
         });
       }
@@ -123,7 +135,7 @@ class _Data6State extends State<Data6> {
       print('Exception caught: $e');
       setState(() {
         _tableRows = [
-          _buildTableRow(['錯誤', '例外錯誤: $e', '無資料', '無資料', '無資料'])
+          _buildTableRow(['錯誤', '例外錯誤: $e', '無資料', '無資料'])
         ];
       });
     }
@@ -168,6 +180,13 @@ class _Data6State extends State<Data6> {
                   ],
                 ),
               ),
+              _buildDrawerItem(Icons.account_circle, '個人資料', () {
+                setState(() {
+                  currentPage = '個人資料';
+                });
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => ProfilePage()));
+              }, currentPage == '個人資料'),
               _buildDrawerItem(Icons.dashboard, '儀表板', () {
                 setState(() {
                   currentPage = '儀表板';
@@ -182,13 +201,6 @@ class _Data6State extends State<Data6> {
                 Navigator.push(context,
                     MaterialPageRoute(builder: (context) => LibraryPage()));
               }, currentPage == '圖書館'),
-              _buildDrawerItem(Icons.account_circle, '個人資料', () {
-                setState(() {
-                  currentPage = '個人資料';
-                });
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => ProfilePage()));
-              }, currentPage == '個人資料'),
               _buildDrawerItem(Icons.wb_sunny, '土壤濕度', () {
                 setState(() {
                   currentPage = '土壤濕度';
@@ -203,13 +215,6 @@ class _Data6State extends State<Data6> {
                 Navigator.push(
                     context, MaterialPageRoute(builder: (context) => Data3()));
               }, currentPage == '現在溫度'),
-              _buildDrawerItem(Icons.eco, '碳排放', () {
-                setState(() {
-                  currentPage = '碳排放';
-                });
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => Data5()));
-              }, currentPage == '碳排放'),
               _buildDrawerItem(Icons.water_drop, '酸鹼度', () {
                 setState(() {
                   currentPage = '酸鹼度';
@@ -233,6 +238,16 @@ class _Data6State extends State<Data6> {
                     MaterialPageRoute(
                         builder: (context) => ChatBotPage(userQuery: '')));
               }, currentPage == '阿吉同學'),
+              _buildDrawerItem(Icons.insert_chart, '圖表分析', () {
+                setState(() {
+                  currentPage = '圖表分析';
+                });
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ChartPage()),
+                );
+              }, currentPage == '圖表分析'),
+
             ],
           ),
         ),
@@ -345,10 +360,14 @@ class _Data6State extends State<Data6> {
     );
   }
 
-  TableRow _buildTableRow(List<String> cells, {bool isHeader = false}) {
+  TableRow _buildTableRow(List<String> cells, {bool isHeader = false, bool isAbnormal = false}) {
     return TableRow(
       decoration: BoxDecoration(
-        color: isHeader ? Color(0xFFB0B0B0) : Colors.transparent, // Match Lux: mid-gray header
+        color: isHeader
+            ? Color(0xFFB0B0B0) // Match Lux: mid-gray header
+            : isAbnormal
+            ? Colors.red.withOpacity(0.3) // 改成0.3透明度
+            : Colors.transparent, // Normal data, no background color
       ),
       children: cells.map((cell) {
         return _buildTableCell(cell, isHeader: isHeader);
